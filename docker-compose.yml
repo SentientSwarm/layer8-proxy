@@ -1,0 +1,65 @@
+# layer8-proxy bundle — locksmith + pipelock + lf-scan.
+# Site repos override mounts and volumes via docker-compose.override.yml.
+#
+# Container runtime: defaults to Docker. For Podman, set:
+#     export COMPOSE="podman compose"
+# in your shell before running scripts. Compose file syntax is identical.
+
+services:
+  locksmith:
+    build:
+      context: ./locksmith
+      args:
+        LOCKSMITH_VERSION: ${LOCKSMITH_VERSION:-v1.1.0}
+    image: layer8-proxy/locksmith:${LOCKSMITH_VERSION:-v1.1.0}
+    container_name: layer8-locksmith
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:9200:9200"
+    extra_hosts:
+      # host.docker.internal is Docker-Desktop-specific by default.
+      # Mapping it to host-gateway makes it resolve on Podman and Linux Docker too,
+      # so tool entries can use one hostname regardless of runtime.
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ${LOCKSMITH_CONFIG_PATH:-./locksmith/config.example.yaml}:/etc/locksmith/config.yaml:ro
+      - ${LOCKSMITH_SECRETS_DIR:-./locksmith/secrets}:/etc/locksmith/secrets:ro
+      - ${LOCKSMITH_DATA_VOLUME:-locksmith_data}:/var/lib/locksmith
+      - ${LOCKSMITH_LOG_VOLUME:-locksmith_log}:/var/log/locksmith
+    depends_on:
+      pipelock:
+        condition: service_healthy
+      lf-scan:
+        condition: service_healthy
+
+  pipelock:
+    build:
+      context: ./pipelock
+      args:
+        PIPELOCK_VERSION: ${PIPELOCK_VERSION:-2.3.0}
+    image: layer8-proxy/pipelock:${PIPELOCK_VERSION:-2.3.0}
+    container_name: layer8-pipelock
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8888:8888"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ${PIPELOCK_CONFIG_PATH:-./pipelock/pipelock.example.yaml}:/etc/pipelock/pipelock.yaml:ro
+      - ${PIPELOCK_LOG_VOLUME:-pipelock_log}:/var/log/pipelock
+
+  lf-scan:
+    build:
+      context: ./lf-scan
+    image: layer8-proxy/lf-scan:0.1.0
+    container_name: layer8-lf-scan
+    restart: unless-stopped
+    expose:
+      - "9100"
+    environment:
+      LF_SCAN_INTERNAL_TOKEN: ${LF_SCAN_INTERNAL_TOKEN:?LF_SCAN_INTERNAL_TOKEN required}
+
+volumes:
+  locksmith_data:
+  locksmith_log:
+  pipelock_log:
