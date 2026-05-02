@@ -1,7 +1,8 @@
 # syntax=docker/dockerfile:1.7
 ARG LOCKSMITH_VERSION=v1.1.0
 
-FROM rust:1.83-slim AS builder
+# 1.85+ required: agent-locksmith uses edition 2024.
+FROM rust:1.90-slim AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         git ca-certificates pkg-config libssl-dev \
