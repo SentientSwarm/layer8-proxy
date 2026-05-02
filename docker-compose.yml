@@ -58,8 +58,18 @@ services:
       - "9100"
     environment:
       LF_SCAN_INTERNAL_TOKEN: ${LF_SCAN_INTERNAL_TOKEN:?LF_SCAN_INTERNAL_TOKEN required}
+      # PromptGuard 2 is a gated Hugging Face model — operator must provide
+      # an HF token (https://hf.co/settings/tokens, accept Meta's terms first).
+      # Required on first run to download model weights; after that, weights
+      # cache in the container layer.
+      HF_TOKEN: ${HF_TOKEN:-}
+    volumes:
+      # Persist the Hugging Face cache across container recreates so we don't
+      # re-download model weights every restart.
+      - lf_scan_hf_cache:/home/lfscan/.cache/huggingface
 
 volumes:
   locksmith_data:
   locksmith_log:
   pipelock_log:
+  lf_scan_hf_cache:
