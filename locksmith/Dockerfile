@@ -22,8 +22,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
  && rm -rf /var/lib/apt/lists/* \
  && groupadd --system --gid 10200 locksmith \
  && useradd --system --uid 10200 --gid locksmith --shell /usr/sbin/nologin locksmith \
- && mkdir -p /var/lib/locksmith /etc/locksmith /var/log/locksmith \
- && chown locksmith:locksmith /var/lib/locksmith /etc/locksmith /var/log/locksmith
+ && mkdir -p /var/lib/locksmith /etc/locksmith /var/log/locksmith /var/run/locksmith \
+ && chown locksmith:locksmith /var/lib/locksmith /etc/locksmith /var/log/locksmith /var/run/locksmith
 
 COPY --from=builder /src/target/release/locksmithd /usr/local/bin/locksmithd
 COPY --from=builder /src/target/release/locksmith  /usr/local/bin/locksmith
