@@ -1,0 +1,18 @@
+# Example locksmith config rendered into the container at /etc/locksmith/config.yaml
+# Real configs live in hermes-site/rendered/locksmith/tools.yaml.
+
+listen:
+  bind: "0.0.0.0:9200"
+  auth_mode: bearer
+
+audit:
+  sqlite_path: "/var/lib/locksmith/audit.db"
+  jsonl_mirror: "/var/log/locksmith/audit.jsonl"
+  retention_days: 30
+
+egress_proxy:
+  url: "http://pipelock:8888"
+
+# Tool definitions are appended below at deploy time from
+# hermes-site/rendered/locksmith/tools.yaml
+tools: []
