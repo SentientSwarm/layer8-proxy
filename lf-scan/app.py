@@ -3,9 +3,11 @@
 Designed to be deleted in agent-locksmith M8 once inline scanners ship.
 """
 
+import os
 from importlib.metadata import version as pkg_version
+from typing import Annotated
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException
 from llamafirewall import (
     AssistantMessage,
     LlamaFirewall,
@@ -23,6 +25,16 @@ SUPPORTED_SCANNERS: dict[str, ScannerType] = {
     "promptguard": ScannerType.PROMPT_GUARD,
     "codeshield": ScannerType.CODE_SHIELD,
 }
+
+
+def require_internal_token(
+    x_internal_token: Annotated[str | None, Header()] = None,
+) -> None:
+    expected = os.environ.get("LF_SCAN_INTERNAL_TOKEN")
+    if expected and x_internal_token != expected:
+        raise HTTPException(
+            status_code=401, detail="invalid or missing X-Internal-Token"
+        )
 
 
 class HealthResponse(BaseModel):
@@ -80,7 +92,11 @@ def health() -> HealthResponse:
     )
 
 
-@app.post("/scan/input", response_model=ScanResponse)
+@app.post(
+    "/scan/input",
+    response_model=ScanResponse,
+    dependencies=[Depends(require_internal_token)],
+)
 def scan_input(request: ScanRequest) -> ScanResponse:
     scanner_types = _validate_scanners(request.scanners)
     firewall = LlamaFirewall(scanners={Role.USER: scanner_types})
@@ -100,7 +116,11 @@ def scan_input(request: ScanRequest) -> ScanResponse:
     return ScanResponse(decision="ALLOW", scanners_triggered=[], reason="")
 
 
-@app.post("/scan/output", response_model=ScanResponse)
+@app.post(
+    "/scan/output",
+    response_model=ScanResponse,
+    dependencies=[Depends(require_internal_token)],
+)
 def scan_output(request: ScanRequest) -> ScanResponse:
     scanner_types = _validate_scanners(request.scanners)
     firewall = LlamaFirewall(scanners={Role.ASSISTANT: scanner_types})
