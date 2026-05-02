@@ -14,8 +14,12 @@ services:
     image: layer8-proxy/locksmith:${LOCKSMITH_VERSION:-v1.1.0}
     container_name: layer8-locksmith
     restart: unless-stopped
-    ports:
-      - "127.0.0.1:9200:9200"
+    # Host-side port binding is the SITE's decision (loopback-only for
+    # same-host deploys, 0.0.0.0 for cross-host). Sites add a `ports:`
+    # block in their docker-compose.override.yml. Inside the compose
+    # network, locksmith is always reachable as `locksmith:9200`.
+    expose:
+      - "9200"
     extra_hosts:
       # host.docker.internal is Docker-Desktop-specific by default.
       # Mapping it to host-gateway makes it resolve on Podman and Linux Docker too,
@@ -40,8 +44,11 @@ services:
     image: layer8-proxy/pipelock:${PIPELOCK_VERSION:-2.3.0}
     container_name: layer8-pipelock
     restart: unless-stopped
-    ports:
-      - "127.0.0.1:8888:8888"
+    # Pipelock is reached only by locksmith (intra-compose network).
+    # No host-side port mapping in the base file. Sites can add one for
+    # debugging via their override if they need it.
+    expose:
+      - "8888"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
