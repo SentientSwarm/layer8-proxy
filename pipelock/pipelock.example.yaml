@@ -1,0 +1,41 @@
+# Example pipelock config — site-specific config lives in
+# hermes-site/pipelock/pipelock.yaml.
+
+listen: "0.0.0.0:8888"
+mode: balanced
+enforce: true
+
+api_allowlist:
+  - "*.docker.io"
+  - "*.docker.com"
+  - "production.cloudflare.docker.com"
+  - "ghcr.io"
+  - "registry.npmjs.org"
+  - "pypi.org"
+  - "files.pythonhosted.org"
+  - "*.ubuntu.com"
+  - "*.debian.org"
+
+api_allowlist_extras: []  # filled in by render-configs.py
+
+forward_proxy:
+  sni_verification: true
+
+blocklist:
+  - "*.pastebin.com"
+  - "*.transfer.sh"
+  - "*.ngrok.io"
+  - "*.requestbin.com"
+  - "*.webhook.site"
+
+dlp:
+  scan_env: false
+  secret_patterns: true
+  entropy_analysis: true
+
+tool_chain_detection:
+  enabled: true
+  action: warn
+  window_size: 20
+  window_seconds: 300
+  max_gap: 3
