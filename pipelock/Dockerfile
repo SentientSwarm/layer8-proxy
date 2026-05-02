@@ -31,6 +31,6 @@ USER pipelock
 EXPOSE 8888
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD curl -fsS http://127.0.0.1:8888/health || exit 1
+    CMD ["/usr/local/bin/pipelock", "healthcheck"]
 
-CMD ["/usr/local/bin/pipelock", "--config", "/etc/pipelock/pipelock.yaml"]
+CMD ["/usr/local/bin/pipelock", "run", "--config", "/etc/pipelock/pipelock.yaml"]
