@@ -7,6 +7,7 @@ from importlib.metadata import version as pkg_version
 
 from fastapi import FastAPI, HTTPException
 from llamafirewall import (
+    AssistantMessage,
     LlamaFirewall,
     Role,
     ScanDecision,
@@ -64,6 +65,12 @@ def _to_user_messages(messages: list[Message]) -> list[UserMessage]:
     return [UserMessage(content=m.content) for m in messages if m.role == "user"]
 
 
+def _to_assistant_messages(messages: list[Message]) -> list[AssistantMessage]:
+    return [
+        AssistantMessage(content=m.content) for m in messages if m.role == "assistant"
+    ]
+
+
 @app.get("/health", response_model=HealthResponse)
 def health() -> HealthResponse:
     return HealthResponse(
@@ -88,6 +95,24 @@ def scan_input(request: ScanRequest) -> ScanResponse:
                 decision="BLOCK",
                 scanners_triggered=list(request.scanners),
                 reason=getattr(result, "reason", None) or "scanner blocked input",
+            )
+
+    return ScanResponse(decision="ALLOW", scanners_triggered=[], reason="")
+
+
+@app.post("/scan/output", response_model=ScanResponse)
+def scan_output(request: ScanRequest) -> ScanResponse:
+    scanner_types = _validate_scanners(request.scanners)
+    firewall = LlamaFirewall(scanners={Role.ASSISTANT: scanner_types})
+    lf_messages = _to_assistant_messages(request.messages)
+
+    for msg in lf_messages:
+        result = firewall.scan(msg)
+        if result.decision != ScanDecision.ALLOW:
+            return ScanResponse(
+                decision="BLOCK",
+                scanners_triggered=list(request.scanners),
+                reason=getattr(result, "reason", None) or "scanner blocked output",
             )
 
     return ScanResponse(decision="ALLOW", scanners_triggered=[], reason="")
