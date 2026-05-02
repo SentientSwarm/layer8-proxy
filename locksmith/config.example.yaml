@@ -1,18 +1,28 @@
-# Example locksmith config rendered into the container at /etc/locksmith/config.yaml
-# Real configs live in hermes-site/rendered/locksmith/tools.yaml.
+# Example locksmith config — site repos render their own version of
+# this file from canonical hermes-site/tools/*.yaml entries.
+#
+# Schema: agent-locksmith v1.1.0
+# See agent-locksmith/config.example.yaml for the full reference.
 
 listen:
-  bind: "0.0.0.0:9200"
-  auth_mode: bearer
+  host: "0.0.0.0"
+  port: 9200
 
-audit:
-  sqlite_path: "/var/lib/locksmith/audit.db"
-  jsonl_mirror: "/var/log/locksmith/audit.jsonl"
-  retention_days: 30
+# Optional inbound auth for requests from agents.
+# inbound_auth:
+#   mode: "bearer"
+#   token: "${LOCKSMITH_INBOUND_TOKEN}"
 
-egress_proxy:
-  url: "http://pipelock:8888"
+# HTTP CONNECT proxy used for tools whose egress is `proxied`.
+# layer8-proxy's compose puts pipelock on the same network as locksmith,
+# resolvable as `pipelock`.
+egress_proxy: "http://pipelock:8888"
 
-# Tool definitions are appended below at deploy time from
-# hermes-site/rendered/locksmith/tools.yaml
+logging:
+  level: "info"
+
+shutdown:
+  drain_window_seconds: 30
+
+# Tool definitions. Empty in the example; site repos populate this.
 tools: []
