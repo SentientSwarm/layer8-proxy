@@ -2,7 +2,8 @@
 ARG LOCKSMITH_VERSION=v1.1.0
 
 # 1.85+ required: agent-locksmith uses edition 2024.
-FROM rust:1.90-slim AS builder
+# Pin to bookworm explicitly so glibc matches the runtime stage below.
+FROM rust:1.90-slim-bookworm AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         git ca-certificates pkg-config libssl-dev \
