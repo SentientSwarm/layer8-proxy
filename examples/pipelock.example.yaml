@@ -1,0 +1,65 @@
+# Example pipelock 2.x config — site-specific config lives in
+# hermes-site/pipelock/pipelock.yaml.
+#
+# Locksmith uses pipelock as an HTTPS CONNECT proxy via egress_proxy.url,
+# so forward_proxy must be enabled. fetch_proxy.listen is the bind address
+# for both fetch (/fetch?url=) and forward (CONNECT) modes — same port.
+#
+# Generated from: pipelock generate config --preset balanced
+# Schema: pipelock 2.3.0+
+
+version: 1
+mode: balanced
+enforce: true
+
+api_allowlist:
+  - "*.anthropic.com"
+  - "*.openai.com"
+  - github.com
+  - "*.github.com"
+  - "*.githubusercontent.com"
+  - registry.npmjs.org
+  - pypi.org
+  - files.pythonhosted.org
+  - "*.docker.io"
+  - "*.docker.com"
+  - production.cloudflare.docker.com
+  - ghcr.io
+  - "*.ubuntu.com"
+  - "*.debian.org"
+
+suppress: []
+
+fetch_proxy:
+  listen: "0.0.0.0:8888"
+  timeout_seconds: 30
+  max_response_mb: 10
+  user_agent: "Pipelock Fetch/1.0"
+  monitoring:
+    max_url_length: 2048
+    entropy_threshold: 4.5
+    subdomain_entropy_threshold: 4
+    max_requests_per_minute: 60
+    max_data_per_minute: 0
+    blocklist:
+      - "*.pastebin.com"
+      - "*.hastebin.com"
+      - "*.paste.ee"
+      - "*.transfer.sh"
+      - "*.file.io"
+      - "*.requestbin.com"
+      - "*.ngrok.io"
+      - "*.webhook.site"
+    subdomain_entropy_exclusions: []
+
+forward_proxy:
+  enabled: true
+  max_tunnel_seconds: 300
+  idle_timeout_seconds: 120
+  sni_verification: true
+  redirect_websocket_hosts: []
+
+dlp:
+  scan_env: false
+  secrets_file: ""
+  min_env_secret_length: 0
