@@ -4,7 +4,7 @@
 set -euo pipefail
 
 LOCKSMITH_URL="${LOCKSMITH_URL:-http://127.0.0.1:9200}"
-PIPELOCK_URL="${PIPELOCK_URL:-http://127.0.0.1:8888}"
+CONTAINER="${CONTAINER:-docker}"
 
 fail() { echo "✗ $1" >&2; exit 1; }
 pass() { echo "✓ $1"; }
@@ -20,8 +20,13 @@ pass "locksmith /readyz"
 curl -fsS "${LOCKSMITH_URL}/version" >/dev/null || fail "locksmith /version unreachable"
 pass "locksmith /version"
 
-curl -fsS "${PIPELOCK_URL}/health"   >/dev/null || fail "pipelock /health unreachable"
-pass "pipelock /health"
+# Pipelock has no host-side port (intra-compose only). Check via docker exec
+# using its bundled healthcheck command. If the container isn't named
+# layer8-pipelock locally, set PIPELOCK_CONTAINER.
+PIPELOCK_CONTAINER="${PIPELOCK_CONTAINER:-layer8-pipelock}"
+${CONTAINER} exec "$PIPELOCK_CONTAINER" /usr/local/bin/pipelock healthcheck >/dev/null \
+    || fail "pipelock healthcheck failed (container $PIPELOCK_CONTAINER)"
+pass "pipelock healthcheck (via docker exec)"
 
 # lf-scan is reachable via locksmith only — try via the lf-scan tool entry.
 # This requires the operator to have configured a `lf-scan` tool. Skip if not.
