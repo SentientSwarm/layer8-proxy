@@ -17,8 +17,13 @@ RUN git clone --depth 1 --branch "${LOCKSMITH_VERSION}" \
 
 FROM debian:bookworm-slim AS runtime
 
+# `curl` is needed for the unauthenticated /livez HEALTHCHECK below.
+# `locksmith status` is NOT a daemon health probe — it's the agent
+# self-service "ask the daemon about my agent's state" command and
+# requires LOCKSMITH_AGENT_TOKEN, which the daemon container never
+# carries. Probing /livez is the contract per INF-3.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        ca-certificates \
+        ca-certificates curl \
  && rm -rf /var/lib/apt/lists/* \
  && groupadd --system --gid 10200 locksmith \
  && useradd --system --uid 10200 --gid locksmith --shell /usr/sbin/nologin locksmith \
@@ -33,6 +38,6 @@ EXPOSE 9200
 WORKDIR /var/lib/locksmith
 
 HEALTHCHECK --interval=15s --timeout=3s --start-period=10s --retries=3 \
-    CMD ["/usr/local/bin/locksmith", "status"] || exit 1
+    CMD curl -fsS --max-time 2 http://127.0.0.1:9200/livez || exit 1
 
 CMD ["/usr/local/bin/locksmithd", "--config", "/etc/locksmith/config.yaml"]
