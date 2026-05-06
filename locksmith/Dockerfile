@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-ARG LOCKSMITH_VERSION=v1.1.0
+ARG LOCKSMITH_VERSION=v2.0.0
 
 # 1.85+ required: agent-locksmith uses edition 2024.
 # Pin to bookworm explicitly so glibc matches the runtime stage below.
