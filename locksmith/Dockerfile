@@ -15,6 +15,16 @@ RUN git clone --depth 1 --branch "${LOCKSMITH_VERSION}" \
         https://github.com/SentientSwarm/agent-locksmith.git . \
  && cargo build --release --locked
 
+# Stage the seed catalog so the runtime COPY succeeds for both v2.0.0+
+# (catalog present) and pre-v2.0.0 (file absent → empty staging dir).
+# Without this stage, runtime COPY would hard-fail on tags that don't
+# yet ship the seed catalog file.
+FROM builder AS seed-extractor
+RUN mkdir -p /seed-out \
+ && if [ -f /src/seed/catalog.yaml ]; then \
+        cp /src/seed/catalog.yaml /seed-out/catalog.yaml; \
+    fi
+
 FROM debian:bookworm-slim AS runtime
 
 # `curl` is needed for the unauthenticated /livez HEALTHCHECK below.
@@ -27,11 +37,22 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
  && rm -rf /var/lib/apt/lists/* \
  && groupadd --system --gid 10200 locksmith \
  && useradd --system --uid 10200 --gid locksmith --shell /usr/sbin/nologin locksmith \
- && mkdir -p /var/lib/locksmith /etc/locksmith /var/log/locksmith /var/run/locksmith \
- && chown locksmith:locksmith /var/lib/locksmith /etc/locksmith /var/log/locksmith /var/run/locksmith
+ && mkdir -p /var/lib/locksmith /etc/locksmith /etc/locksmith/seed \
+        /var/log/locksmith /var/run/locksmith \
+ && chown locksmith:locksmith /var/lib/locksmith /etc/locksmith /etc/locksmith/seed \
+        /var/log/locksmith /var/run/locksmith
 
 COPY --from=builder /src/target/release/locksmithd /usr/local/bin/locksmithd
 COPY --from=builder /src/target/release/locksmith  /usr/local/bin/locksmith
+# Phase E.7 / v2.0.0+: ship the curated seed catalog. First-boot loads
+# it into the registrations table; operators provide credentials via
+# .env and override fields via the admin API. Catalog version is
+# tracked in registrations_meta.seed_version, so image upgrades that
+# bump the version apply additive changes idempotently without
+# clobbering operator overrides. The seed-extractor stage above stages
+# either the real catalog (v2.0.0+) or an empty directory (pre-v2.0.0,
+# where the seed loader gracefully skips with an INFO log).
+COPY --from=seed-extractor /seed-out/ /etc/locksmith/seed/
 
 USER locksmith
 EXPOSE 9200
