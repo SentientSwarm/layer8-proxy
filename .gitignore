@@ -1,0 +1,12 @@
+# Operator-supplied secrets at deploy time; never commit.
+# .env.example holds the schema reference.
+.env
+
+# Local locksmith state (operator credentials, sealed creds).
+locksmith/operators.yaml
+locksmith/secrets/
+
+# Build artifacts.
+target/
+*.iml
+.DS_Store
