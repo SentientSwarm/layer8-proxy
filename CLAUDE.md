@@ -12,6 +12,8 @@ This repo provides the docker-compose definitions, image build context for the l
 
 `main` is the working branch. Cut feature branches from `main`. Versioned via git tags. **Current: v1.0.0** (paired with agent-locksmith v2.0.0).
 
+**Phase G** (per-agent credential overrides + OAuth session labels) lives on `agent-locksmith` `feature/phase-g-per-agent-creds` and is pending merge to develop. Once merged + the next image build is cut, the layer8-proxy bundle picks it up automatically via the pinned `LOCKSMITH_VERSION`. No layer8-proxy code change required — it's a downstream consumer.
+
 ## File layout
 
 ```

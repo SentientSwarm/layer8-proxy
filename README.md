@@ -36,8 +36,15 @@ their outbound HTTP through layer8-proxy and never see provider API keys.
 - **OAuth credential variant** — codex / copilot / anthropic-oauth /
   google-gemini-cli / qwen-cli. Refresh tokens sealed at rest with
   AES-GCM (`LOCKSMITH_OAUTH_SEALING_KEY`); access tokens auto-refresh.
+- **Per-agent credential overrides + OAuth labels** (Phase G) — pin
+  individual agents to distinct upstream credentials or distinct OAuth
+  sessions without proliferating registrations. Default behavior
+  (no overrides) unchanged. See [agent-locksmith's per-agent
+  credentials concept doc][per-agent-creds].
 - **mTLS feature flag** for the agent listener and admin HTTPS.
 - **§4.7.9 uniform error envelope** across all admin + proxy errors.
+
+[per-agent-creds]: https://github.com/SentientSwarm/agent-locksmith/blob/develop/docs/user/concepts/per-agent-credentials.md
 
 ## Quick start
 
