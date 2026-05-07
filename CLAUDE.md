@@ -4,30 +4,33 @@ Substantive context for coding agents working on **layer8-proxy** — the Docker
 
 ## What this repo is
 
-Public-facing deployable artifact. **Not** a credential store, **not** a per-host config repo (those are `layer8-proxy-site` and `hermes-site`).
+Public-facing deployable artifact. **Not** a credential store, **not** a per-host config repo (those are operator-private site repos like `layer8-proxy-site` for SentientSwarm; OS consumers spin up their own from `examples/site/`).
 
-This repo provides the docker-compose definitions, image build context for the locksmith container, smoke-test scripts, and operator-facing user docs. Per-host config (sealed creds, agents.yaml, tool definitions) lives in private site repos that consume the bundle by version pin.
+This repo provides the docker-compose definitions, image build context for the locksmith container, smoke-test scripts, operator-facing user docs, and a public-shape **site template** at `examples/site/` plus a `scripts/init-site.sh` generator. Per-host operator config (sealed creds, agents.yaml, etc.) lives in the site repo, not here.
 
 ## Working branch
 
-`main` is the working branch. Cut feature branches from `main`. Versioned via git tags `v0.1.0`, `v0.2.0`, …
+`main` is the working branch. Cut feature branches from `main`. Versioned via git tags. **Current: v1.0.0** (paired with agent-locksmith v2.0.0).
 
 ## File layout
 
 ```
 docker-compose.yml             # The stack definition: locksmith, pipelock, lf-scan
 locksmith/
-  Dockerfile                   # Multi-stage build: agent-locksmith binary + runtime image
+  Dockerfile                   # Multi-stage build: agent-locksmith binary + seed catalog + runtime image
   docker-entrypoint.sh
 pipelock/                      # pipelock config defaults
 lf-scan/                       # lf-scan sidecar config defaults
 scripts/
   verify.sh                    # Stack smoke test (used by site repos' deploy.sh)
   bootstrap.sh                 # First-boot bootstrap helper
+  init-site.sh                 # Generate a site repo from examples/site/ template
+examples/
+  site/                        # Public-shape site repo template; copy + customize
 docs/
   user/                        # Operator-facing user documentation
   user/concepts/               # Deployment-shape concepts (topology etc.)
-.env.example                   # Required env vars (LOCKSMITH_VERSION, BACKUP_DEST, ...)
+.env.example                   # Required env vars (LOCKSMITH_VERSION=v2.0.0 default, ...)
 ```
 
 The authoritative stack spec lives at `agents-stack/docs/spec/v<X.Y.Z>.md`. The PRD lives at `agents-stack/docs/prd/v<X.Y.Z>.md`. Cumulative cross-repo decisions live at `agents-stack/docs/adrs/`.
@@ -35,27 +38,32 @@ The authoritative stack spec lives at `agents-stack/docs/spec/v<X.Y.Z>.md`. The 
 ## Common commands
 
 ```bash
-# Build the locksmith image with a specific version
-LOCKSMITH_VERSION=v1.1.0 docker compose build locksmith
+# Bootstrap a new operator's site repo from the public template.
+./scripts/init-site.sh ../my-site
 
-# Bring up the stack (typically invoked from a site repo's deploy.sh)
+# Build the locksmith image with a specific version (defaults to v2.0.0).
+LOCKSMITH_VERSION=v2.0.0 docker compose build locksmith
+
+# Bring up the stack (typically invoked from a site repo's deploy.sh).
 docker compose up -d
 
-# Smoke test (auth assertions enabled when env fixture is set)
+# Smoke test (auth assertions enabled when env fixture is set).
 LOCKSMITH_VERIFY_TOKEN=lk_... \
 LOCKSMITH_VERIFY_ALLOWED_TOOL=lmstudio \
 LOCKSMITH_VERIFY_DENIED_TOOL=anthropic \
 ./scripts/verify.sh
 
-# Stack down (operator hosts)
+# Stack down (operator hosts).
 docker compose down
 ```
 
 ## Conventions
 
-- **Image versioning**: locksmith container is pinned by `${LOCKSMITH_VERSION}` (set in site repo's `.env`). Bumping it is the ordinary upgrade path. Site repos pin `layer8_version=vX.Y.Z` in `site.cfg` against this repo's tag.
-- **Healthcheck**: locksmith image's HEALTHCHECK uses `curl -fsS /livez`. Older images (pre-v2.0.0) had a broken `locksmith status` check; the override hatch in `docker-compose.override.yml` of site repos lets operators disable it if pinning a stale version.
+- **Image versioning**: locksmith container is pinned by `${LOCKSMITH_VERSION}` (default `v2.0.0` at v1.0.0 of this bundle; site repo's `.env` overrides). Bumping it is the ordinary upgrade path. Site repos pin `layer8_version=vX.Y.Z` in `site.cfg` against this repo's tag.
+- **Locksmith Dockerfile**: multi-stage with a `seed-extractor` stage that conditionally stages `seed/catalog.yaml` from the cloned source. v2.0.0+ tags ship the catalog; pre-v2.0.0 tags get an empty staging dir (graceful fallback).
+- **Healthcheck**: locksmith image's HEALTHCHECK uses `curl -fsS /livez`. Pre-v2.0.0 images had a broken `locksmith status` check; the override hatch in `docker-compose.override.yml` lets operators disable it if pinning a stale version.
 - **Pipelock + lf-scan**: bundled but minimally configured here. Site repos override config via volume mounts.
+- **`examples/site/` is the canonical public site template.** Keep the public-shape files (deploy.sh, secrets.bootstrap.sh, scripts/*.py, etc.) consistent with `layer8-proxy-site` (the SentientSwarm production site repo). Drift triage: documented in `examples/site/README.md`.
 
 ## Don't do
 
