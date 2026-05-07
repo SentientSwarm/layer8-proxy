@@ -10,7 +10,7 @@ This repo provides the docker-compose definitions, image build context for the l
 
 ## Working branch
 
-`main` is the working branch. Cut feature branches from `main`. Versioned via git tags. **Current: v1.0.0** (paired with agent-locksmith v2.0.0).
+`main` is the working branch. Cut feature branches from `main`. Versioned via git tags. **Current: v1.1.0** (paired with agent-locksmith v2.1.0).
 
 **Phase G** (per-agent credential overrides + OAuth session labels) lives on `agent-locksmith` `feature/phase-g-per-agent-creds` and is pending merge to develop. Once merged + the next image build is cut, the layer8-proxy bundle picks it up automatically via the pinned `LOCKSMITH_VERSION`. No layer8-proxy code change required — it's a downstream consumer.
 
@@ -32,7 +32,7 @@ examples/
 docs/
   user/                        # Operator-facing user documentation
   user/concepts/               # Deployment-shape concepts (topology etc.)
-.env.example                   # Required env vars (LOCKSMITH_VERSION=v2.0.0 default, ...)
+.env.example                   # Required env vars (LOCKSMITH_VERSION=v2.1.0 default, ...)
 ```
 
 The authoritative stack spec lives at `agents-stack/docs/spec/v<X.Y.Z>.md`. The PRD lives at `agents-stack/docs/prd/v<X.Y.Z>.md`. Cumulative cross-repo decisions live at `agents-stack/docs/adrs/`.
@@ -43,8 +43,8 @@ The authoritative stack spec lives at `agents-stack/docs/spec/v<X.Y.Z>.md`. The 
 # Bootstrap a new operator's site repo from the public template.
 ./scripts/init-site.sh ../my-site
 
-# Build the locksmith image with a specific version (defaults to v2.0.0).
-LOCKSMITH_VERSION=v2.0.0 docker compose build locksmith
+# Build the locksmith image with a specific version (defaults to v2.1.0).
+LOCKSMITH_VERSION=v2.1.0 docker compose build locksmith
 
 # Bring up the stack (typically invoked from a site repo's deploy.sh).
 docker compose up -d
@@ -61,7 +61,7 @@ docker compose down
 
 ## Conventions
 
-- **Image versioning**: locksmith container is pinned by `${LOCKSMITH_VERSION}` (default `v2.0.0` at v1.0.0 of this bundle; site repo's `.env` overrides). Bumping it is the ordinary upgrade path. Site repos pin `layer8_version=vX.Y.Z` in `site.cfg` against this repo's tag.
+- **Image versioning**: locksmith container is pinned by `${LOCKSMITH_VERSION}` (default `v2.1.0` at v1.1.0 of this bundle; site repo's `.env` overrides). Bumping it is the ordinary upgrade path. Site repos pin `layer8_version=vX.Y.Z` in `site.cfg` against this repo's tag.
 - **Locksmith Dockerfile**: multi-stage with a `seed-extractor` stage that conditionally stages `seed/catalog.yaml` from the cloned source. v2.0.0+ tags ship the catalog; pre-v2.0.0 tags get an empty staging dir (graceful fallback).
 - **Healthcheck**: locksmith image's HEALTHCHECK uses `curl -fsS /livez`. Pre-v2.0.0 images had a broken `locksmith status` check; the override hatch in `docker-compose.override.yml` lets operators disable it if pinning a stale version.
 - **Pipelock + lf-scan**: bundled but minimally configured here. Site repos override config via volume mounts.

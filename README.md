@@ -4,11 +4,11 @@ Semantic networking layer (L8) for AI agents — credential proxy + egress
 firewall + scanner sidecar in one Docker Compose bundle. Agents proxy
 their outbound HTTP through layer8-proxy and never see provider API keys.
 
-**Current version: v1.0.0** ([release notes](https://github.com/SentientSwarm/layer8-proxy/releases/tag/v1.0.0))
+**Current version: v1.1.0** ([release notes](https://github.com/SentientSwarm/layer8-proxy/releases/tag/v1.1.0))
 
 ## Components
 
-- **locksmith** ([`agent-locksmith`](https://github.com/SentientSwarm/agent-locksmith) v2.0.0)
+- **locksmith** ([`agent-locksmith`](https://github.com/SentientSwarm/agent-locksmith) v2.1.0)
   — agent-facing proxy. Credential injection, per-agent bearer + ACL,
   audit, response controls, OAuth credential variant. Single namespace
   `/api/{tool}/{*path}`.
@@ -144,7 +144,8 @@ discovery but proxy calls return 503 `oauth_sealing_key_unset`.
 
 | layer8-proxy | agent-locksmith | Notes |
 |---|---|---|
-| v1.0.0 | v2.0.0 | Catalog substrate + OAuth + per-agent ACL + mTLS. **Current.** |
+| v1.1.0 | v2.1.0 | + Phase G: per-agent credential overrides + OAuth session labels. **Current.** |
+| v1.0.0 | v2.0.0 | Catalog substrate + OAuth + per-agent ACL + mTLS. |
 | v0.x   | v1.x    | Pre-Phase-E homogeneous tools list. Migrate via `legacy_bootstrap` shim on first v1.0.0 boot. |
 
 Operators can stay pinned to v0.x by setting `LOCKSMITH_VERSION=v1.1.0`
