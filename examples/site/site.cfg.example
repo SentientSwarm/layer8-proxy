@@ -1,0 +1,20 @@
+# Site identity and platform pinning for the layer8-proxy stack.
+#
+# Copy to site.cfg and fill in your host-specific values.
+
+# Operator-chosen identifier (free-form; appears in audit + backups).
+site_name=
+# Hostname this site is deployed on.
+host=
+
+# Path to the layer8-proxy repo (relative to this site repo).
+# Default assumes parallel checkouts: ../layer8-proxy.
+layer8_path=../layer8-proxy
+
+# Pinned layer8-proxy version. Bumping this is the ordinary upgrade
+# path. v1.0.0 ships with agent-locksmith v2.0.0 (catalog substrate +
+# OAuth + per-agent ACL + mTLS).
+#
+# Leave empty to skip the version check (development setups against
+# main).
+layer8_version=v1.0.0

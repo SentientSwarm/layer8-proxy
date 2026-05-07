@@ -1,0 +1,15 @@
+# Operator-supplied; never commit.
+.env
+agents.yaml
+agents.test.yaml
+
+# Sealed creds (cleartext-derived; never commit).
+locksmith/operators.yaml
+locksmith/secrets/*.creds
+locksmith/secrets/*.cred
+
+# Render artifacts (regenerated each deploy).
+rendered/
+
+# Misc.
+.DS_Store

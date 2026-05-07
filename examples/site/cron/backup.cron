@@ -1,0 +1,5 @@
+# Daily backup of layer8-proxy state at 03:17 host-local time.
+# Install with:  crontab cron/backup.cron
+# Or as root:    cp cron/backup.cron /etc/cron.d/layer8-backup
+
+17 3 * * *  cd /CHANGE/ME/agents-stack/layer8-proxy-site && ./backup.sh >> /var/log/layer8-backup.log 2>&1

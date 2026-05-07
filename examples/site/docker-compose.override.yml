@@ -1,0 +1,40 @@
+# Site-specific overrides applied on top of layer8-proxy/docker-compose.yml.
+# Mounts the rendered locksmith config + sealed secrets, forwards env vars
+# for ${VAR} expansion, and (for the cross-host smoke test) exposes
+# locksmith on a routable interface so the agent host can reach it.
+
+services:
+  locksmith:
+    # Cross-host topology: bind on all interfaces so the agent host
+    # (mini-m1) can reach this proxy across the LAN. For same-host
+    # (loopback-only) deploys, change to "127.0.0.1:9200:9200".
+    ports:
+      - "0.0.0.0:9200:9200"
+    # The Dockerfile HEALTHCHECK is correct from v2.0.0 onward (curl
+    # /livez). Keep this block as a safety hatch in case an older
+    # locksmith image pinned by LOCKSMITH_VERSION still ships the
+    # broken `locksmith status` healthcheck — uncomment to disable.
+    # healthcheck:
+    #   disable: true
+    volumes:
+      - ./rendered/locksmith/config.yaml:/etc/locksmith/config.yaml:ro
+      - ./locksmith/secrets:/etc/locksmith/secrets:ro
+      - ./locksmith/operators.yaml:/etc/locksmith/operators.yaml:ro
+    environment:
+      # Locksmith expands ${VAR} in tool auth values from its own env.
+      # Source values come from this site repo's .env via --env-file at deploy time.
+      LF_SCAN_INTERNAL_TOKEN: ${LF_SCAN_INTERNAL_TOKEN:-}
+      # Cloud tool keys.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      TAVILY_API_KEY: ${TAVILY_API_KEY:-}
+      # Local inference (optional auth — env var plumbed even if empty so
+      # operator can enable auth via tool YAML edit alone).
+      LM_STUDIO_API_KEY: ${LM_STUDIO_API_KEY:-}
+      OLLAMA_API_KEY: ${OLLAMA_API_KEY:-}
+
+  pipelock:
+    volumes:
+      - ./pipelock/pipelock.yaml:/etc/pipelock/pipelock.yaml:ro
+      - ./rendered/pipelock/allowlist-extras.yaml:/etc/pipelock/allowlist-extras.yaml:ro

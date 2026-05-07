@@ -39,36 +39,56 @@ their outbound HTTP through layer8-proxy and never see provider API keys.
 - **mTLS feature flag** for the agent listener and admin HTTPS.
 - **§4.7.9 uniform error envelope** across all admin + proxy errors.
 
-## Quick start (development)
+## Quick start
+
+The canonical deploy uses a **site repo** that pins a layer8-proxy
+version, holds sealed credentials, declares per-agent ACLs, and wraps
+the bring-up. This repo ships a public template + init script:
 
 ```bash
 git clone git@github.com:SentientSwarm/layer8-proxy.git
 cd layer8-proxy
+./scripts/init-site.sh ../my-site
+cd ../my-site
+
+# Edit site.cfg / .env / agents.yaml.
+# Bootstrap sealed creds:
+echo -n "$(openssl rand -hex 32)" | ./secrets.bootstrap.sh lf_scan_token --from-stdin
+
+# Mint operator credential (either path works):
+docker exec layer8-locksmith /usr/local/bin/locksmith bootstrap-operator \
+    --name alice > locksmith/operators.yaml         # Rust-native; v2.0.0+
+# OR
+LOCKSMITH_CREDS_PASSPHRASE="..." ./scripts/bootstrap-operator.py  # site Python
+
+# Deploy:
+./deploy.sh
+
+# Register agents declared in agents.yaml:
+./scripts/register-agents.sh
+```
+
+For Podman: `export COMPOSE="podman compose"` before running.
+
+The template lives at [`examples/site/`](examples/site) — browse it for
+the structure, then use `init-site.sh` to copy it out + `git init`. See
+the template's [README](examples/site/README.md) for file-by-file detail.
+
+### Standalone (no site repo)
+
+For development / evaluation, you can also run the bundle directly
+from this repo:
+
+```bash
 cp .env.example .env
-# Edit .env to set LF_SCAN_INTERNAL_TOKEN to a secure random string.
+nano .env  # set LF_SCAN_INTERNAL_TOKEN to a secure random string
 ./scripts/bootstrap.sh
 docker compose up -d
 ./scripts/verify.sh
 ```
 
-For Podman: `export COMPOSE="podman compose"` before running.
-
-After the stack is up:
-
-1. Bootstrap the operator credential — see
-   [`layer8-proxy-site`](https://github.com/SentientSwarm/layer8-proxy-site)'s
-   `scripts/bootstrap-operator.py` (run from a site repo, not this one).
-2. Register your first agent —
-   `locksmith agent register --name my-agent --allowlist anthropic,openai`.
-3. Install the printed bearer on the agent host (mode 0600 file or
-   sealed-cred). The agent calls
-   `http://layer8.lan:9200/api/<tool>/<path>` with the bearer.
-
-For real deployments, layer8-proxy is consumed by a *site* repo
-(`layer8-proxy-site` for the proxy operator,
-`hermes-site` / `openclaw-site` for the agent operator) that pins a
-version, supplies sealed creds, and wraps `docker compose up` with
-a `deploy.sh`.
+This skips the site-repo pattern; you'll register agents and manage
+credentials manually (`docker exec layer8-locksmith /usr/local/bin/locksmith ...`).
 
 ## OAuth providers (v1.0.0+)
 

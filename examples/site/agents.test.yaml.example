@@ -1,0 +1,12 @@
+# Smoke-test agent fixture. Registered only via:
+#   AGENTS_MANIFEST=./agents.test.yaml ./scripts/register-agents.sh
+#
+# Allowlist deliberately restricted to lmstudio so verify.sh can prove
+# BOTH the allow path (call to /api/lmstudio/...) AND the deny path
+# (call to /api/anthropic/... should 403 with code=tool_not_allowed).
+
+agents:
+  - name: hermes-test
+    description: "Smoke test agent (lmstudio only)"
+    allowlist:
+      - lmstudio

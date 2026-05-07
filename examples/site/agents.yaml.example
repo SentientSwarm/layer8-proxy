@@ -1,0 +1,24 @@
+# Agent manifest — registers agents in locksmith with per-agent ACLs.
+#
+# Each entry becomes a `locksmith agent register --name <name>
+# --allowlist <tool1,tool2,...>` call. Run `./scripts/register-agents.sh`
+# to apply.
+#
+# Tokens are returned in cleartext ONCE per registration. Operator
+# distributes the token to the agent host (see hermes-site/README.md
+# for the convention used on macOS dev hosts).
+
+agents:
+  - name: hermes-mini-m1
+    description: "hermes on mini-m1 (jxstanford)"
+    allowlist:
+      - anthropic
+      - lmstudio
+      - lf-scan
+
+  # Example: a second agent with a narrower allowlist.
+  # - name: research-bot
+  #   description: "Read-only research agent"
+  #   allowlist:
+  #     - tavily
+  #     - lf-scan

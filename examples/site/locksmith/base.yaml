@@ -1,0 +1,50 @@
+# Base locksmith config — render_configs.py appends `tools:` from
+# tools/*.yaml when present (Phase E.8+: typically empty; the seed
+# catalog at /etc/locksmith/seed/catalog.yaml supplies the default
+# providers, and operator overrides go through the admin API rather
+# than per-tool YAML).
+#
+# Schema: agent-locksmith v2.0.0+ (per-agent bearer + ACL on the proxy
+# hot path; kind-discriminated registrations; seed catalog).
+
+listen:
+  host: "0.0.0.0"
+  port: 9200
+  # Per-agent bearer authentication is enforced on the proxy hot path
+  # from agent-locksmith v2.0.0 onward (M9 / B1). Set explicitly so
+  # future operators see the intended auth posture rather than
+  # relying on the daemon default.
+  auth_mode: bearer
+  # Admin UDS — required for the operator CLI (agent register, bootstrap
+  # mint, audit query, etc.) and for per-agent ACL enforcement.
+  admin_socket:
+    path: "/var/run/locksmith/admin.sock"
+
+# Operator credentials file — must be present at startup when admin_socket
+# is set. Bootstrap with scripts/bootstrap-operator.sh on first deploy.
+operator_credentials_path: "/etc/locksmith/operators.yaml"
+
+# SQLite store for agents, bootstrap tokens, and audit records.
+database:
+  path: "/var/lib/locksmith/locksmith.db"
+
+audit:
+  retention_days: 90
+  sweep_interval_seconds: 3600
+
+# layer8-proxy compose puts pipelock on the same network as locksmith,
+# resolvable as `pipelock`.
+egress_proxy: "http://pipelock:8888"
+
+logging:
+  level: "info"
+
+shutdown:
+  # Post-signal grace period for in-flight requests to complete before
+  # the daemon force-exits. Long-running streaming LLM responses that
+  # don't finish within this window get their listener tasks dropped.
+  # Pre-M9 the timer started at daemon-startup (bug); from v2.0.0 on
+  # it correctly only applies after SIGTERM/SIGINT arrives.
+  drain_window_seconds: 30
+
+# `tools:` is appended by render_configs.py from tools/*.yaml.

@@ -1,0 +1,8 @@
+# Shared defaults — not a tool itself (underscore-prefixed, ignored by render).
+# Currently informational. Future: tooling can apply these defaults
+# during render if a tool omits a field.
+defaults:
+  timeouts:
+    request_seconds: 30
+    idle_seconds: 60
+  body_limit_bytes: 5_000_000

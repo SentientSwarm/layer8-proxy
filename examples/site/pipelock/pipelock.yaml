@@ -1,0 +1,60 @@
+# pipelock 2.x config — site-specific.
+# Per-tool allowlist entries are appended at deploy time from
+# rendered/pipelock/allowlist-extras.yaml (rendered into the container at
+# /etc/pipelock/allowlist-extras.yaml; pipelock reads them via merge).
+
+version: 1
+mode: balanced
+enforce: true
+
+api_allowlist:
+  - "*.docker.io"
+  - "*.docker.com"
+  - production.cloudflare.docker.com
+  - ghcr.io
+  - registry.npmjs.org
+  - pypi.org
+  - files.pythonhosted.org
+  - "*.ubuntu.com"
+  - "*.debian.org"
+  # Cloud LLM providers — explicitly listed even though tools/ also derive them.
+  # Belt-and-suspenders: if a tool entry is removed, pipelock keeps working
+  # until you intentionally remove it here too.
+  - "*.anthropic.com"
+  - "*.openai.com"
+
+suppress: []
+
+fetch_proxy:
+  listen: "0.0.0.0:8888"
+  timeout_seconds: 30
+  max_response_mb: 10
+  user_agent: "Pipelock Fetch/1.0"
+  monitoring:
+    max_url_length: 2048
+    entropy_threshold: 4.5
+    subdomain_entropy_threshold: 4
+    max_requests_per_minute: 60
+    max_data_per_minute: 0
+    blocklist:
+      - "*.pastebin.com"
+      - "*.hastebin.com"
+      - "*.paste.ee"
+      - "*.transfer.sh"
+      - "*.file.io"
+      - "*.requestbin.com"
+      - "*.ngrok.io"
+      - "*.webhook.site"
+    subdomain_entropy_exclusions: []
+
+forward_proxy:
+  enabled: true
+  max_tunnel_seconds: 300
+  idle_timeout_seconds: 120
+  sni_verification: true
+  redirect_websocket_hosts: []
+
+dlp:
+  scan_env: false
+  secrets_file: ""
+  min_env_secret_length: 0

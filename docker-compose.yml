@@ -10,8 +10,8 @@ services:
     build:
       context: ./locksmith
       args:
-        LOCKSMITH_VERSION: ${LOCKSMITH_VERSION:-v1.1.0}
-    image: layer8-proxy/locksmith:${LOCKSMITH_VERSION:-v1.1.0}
+        LOCKSMITH_VERSION: ${LOCKSMITH_VERSION:-v2.0.0}
+    image: layer8-proxy/locksmith:${LOCKSMITH_VERSION:-v2.0.0}
     container_name: layer8-locksmith
     restart: unless-stopped
     # Host-side port binding is the SITE's decision (loopback-only for
