@@ -24,22 +24,22 @@ Read these first if you've never deployed layer8-proxy:
 | [add-a-tool.md](add-a-tool.md) | Seed catalog override + custom tool registration + OAuth bootstrap. |
 | [troubleshoot.md](troubleshoot.md) | Top 12 failure modes with diagnosis recipes. |
 
-## Tier 2 — depth + day-2 ops (in progress)
+## Tier 2 — depth + day-2 ops
 
-| Doc | Status |
+| Doc | What it covers |
 |---|---|
-| `deploy.md` | Planned — depth companion to getting-started (multi-host, mTLS, sealed creds). |
-| `rotate-credentials.md` | Planned — provider keys, agent bearers, operator creds, OAuth refresh tokens. |
-| `upgrade.md` | Planned — version-pin bumps, migration story across breaking changes. |
-| `backup-and-restore.md` | Planned — locksmith DB + sealed creds + JSONL audit mirror. |
-| `smoke-test.md` | Planned — verify.sh deep dive + manual probe recipes. |
+| [deploy.md](deploy.md) | Depth companion to getting-started: topologies, image pinning, sealed creds (Linux + macOS), mTLS rollout, custom site overrides, two-tier audit storage, production checklist. |
+| [rotate-credentials.md](rotate-credentials.md) | Provider keys, agent bearers, operator bearer, OAuth refresh tokens, sealing-key rotation, internal infra tokens, restic password. |
+| [upgrade.md](upgrade.md) | Patch / minor / major release flows, downgrade caveats, cross-bundle v0.x → v1.0 upgrade, rollback recipe. |
+| [backup-and-restore.md](backup-and-restore.md) | restic-based snapshots, JSONL audit mirror, restore drill, snapshot integrity checks. |
+| [smoke-test.md](smoke-test.md) | `verify.sh` deep dive, auth-enforcement env vars, manual probes (discovery, real provider call, ACL deny, audit), continuous verification cron. |
 
-## Tier 3 — concepts + architecture (in progress)
+## Tier 3 — concepts + architecture
 
-| Doc | Status |
+| Doc | What it covers |
 |---|---|
-| `architecture.md` | Planned — user-level system diagram + component responsibilities. |
-| `concepts/topology.md` | Planned — same-host vs neutral-host vs LAN deployment shapes. |
+| [architecture.md](architecture.md) | Stack-level component diagram (locksmith + pipelock + lf-scan), wire-flow walkthrough, trust boundary table. |
+| [concepts/topology.md](concepts/topology.md) | Same-host vs neutral-host vs LAN-spread deployment shapes and migration paths. |
 
 For cross-cutting concepts that span the stack (trust boundary, kind
 taxonomy, agent identity + ACL, error envelope), see
