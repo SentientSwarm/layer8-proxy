@@ -10,9 +10,9 @@ This repo provides the docker-compose definitions, image build context for the l
 
 ## Working branch
 
-`main` is the working branch. Cut feature branches from `main`. Versioned via git tags. **Current: v1.3.0** (paired with agent-locksmith v2.3.0 — Phase G3 codex Responses body fixup).
+`main` is the working branch. Cut feature branches from `main`. Versioned via git tags. **Current: v1.4.0** (paired with agent-locksmith v2.4.0 — Phase G4 codex required-header injection).
 
-Phase G (per-agent credential overrides + OAuth session labels) shipped in v1.1.0 / agent-locksmith v2.1.0. Phase G2 (codex `ChatGPT-Account-ID` injection) shipped in v1.2.0 / agent-locksmith v2.2.0. Phase G3 (codex Responses body fixup — `store: false`, `stream: true`, default `instructions`) shipped in v1.3.0 / agent-locksmith v2.3.0. All three are downstream consumers — no layer8-proxy code change beyond the pinned `LOCKSMITH_VERSION` bump.
+Phase G (per-agent credential overrides + OAuth session labels) shipped in v1.1.0 / agent-locksmith v2.1.0. Phase G2 (codex `ChatGPT-Account-ID` injection) shipped in v1.2.0 / agent-locksmith v2.2.0. Phase G3 (codex Responses body fixup — `store: false`, `stream: true`, default `instructions`) shipped in v1.3.0 / agent-locksmith v2.3.0. Phase G4 (codex required-header injection — `OpenAI-Beta`, `originator`) shipped in v1.4.0 / agent-locksmith v2.4.0, closing the codex transparent-integration loop. All four are downstream consumers — no layer8-proxy code change beyond the pinned `LOCKSMITH_VERSION` bump (v1.4.0 also adds operator-side key-rotation tooling under `scripts/`).
 
 ## File layout
 
@@ -32,7 +32,7 @@ examples/
 docs/
   user/                        # Operator-facing user documentation
   user/concepts/               # Deployment-shape concepts (topology etc.)
-.env.example                   # Required env vars (LOCKSMITH_VERSION=v2.3.0 default, ...)
+.env.example                   # Required env vars (LOCKSMITH_VERSION=v2.4.0 default, ...)
 ```
 
 The authoritative stack spec lives at `agents-stack/docs/spec/v<X.Y.Z>.md`. The PRD lives at `agents-stack/docs/prd/v<X.Y.Z>.md`. Cumulative cross-repo decisions live at `agents-stack/docs/adrs/`.
@@ -44,7 +44,7 @@ The authoritative stack spec lives at `agents-stack/docs/spec/v<X.Y.Z>.md`. The 
 ./scripts/init-site.sh ../my-site
 
 # Build the locksmith image with a specific version (defaults to v2.1.0).
-LOCKSMITH_VERSION=v2.3.0 docker compose build locksmith
+LOCKSMITH_VERSION=v2.4.0 docker compose build locksmith
 
 # Bring up the stack (typically invoked from a site repo's deploy.sh).
 docker compose up -d
@@ -61,7 +61,7 @@ docker compose down
 
 ## Conventions
 
-- **Image versioning**: locksmith container is pinned by `${LOCKSMITH_VERSION}` (default `v2.3.0` at v1.3.0 of this bundle; site repo's `.env` overrides). Bumping it is the ordinary upgrade path. Site repos pin `layer8_version=vX.Y.Z` in `site.cfg` against this repo's tag.
+- **Image versioning**: locksmith container is pinned by `${LOCKSMITH_VERSION}` (default `v2.4.0` at v1.4.0 of this bundle; site repo's `.env` overrides). Bumping it is the ordinary upgrade path. Site repos pin `layer8_version=vX.Y.Z` in `site.cfg` against this repo's tag.
 - **Locksmith Dockerfile**: multi-stage with a `seed-extractor` stage that conditionally stages `seed/catalog.yaml` from the cloned source. v2.0.0+ tags ship the catalog; pre-v2.0.0 tags get an empty staging dir (graceful fallback).
 - **Healthcheck**: locksmith image's HEALTHCHECK uses `curl -fsS /livez`. Pre-v2.0.0 images had a broken `locksmith status` check; the override hatch in `docker-compose.override.yml` lets operators disable it if pinning a stale version.
 - **Pipelock + lf-scan**: bundled but minimally configured here. Site repos override config via volume mounts.

@@ -2,15 +2,108 @@
 
 Recipes for rotating each credential type in a layer8-proxy deployment.
 
-There are five credential surfaces. Each rotates independently:
+There are six credential surfaces. Each rotates independently:
 
-| Credential | Lifetime | Rotation triggered by |
-|---|---|---|
-| Provider API keys (`ANTHROPIC_API_KEY` etc.) | provider-defined; usually long | Provider key rotation policy, suspected leak |
-| Agent bearer (`lk_...`) | provider-of-deploy-defined | Agent host change-of-hands, suspected leak |
-| Operator bearer (`lkop_...`) | until rotated | Operator role change, suspected leak |
-| OAuth refresh tokens | provider-defined | Provider revoked the session, suspected leak |
-| Internal infra tokens (`LF_SCAN_INTERNAL_TOKEN`) | until rotated | Compromise, audit recommendation |
+| Credential | Lifetime | Rotation triggered by | Toolkit script |
+|---|---|---|---|
+| `LOCKSMITH_CREDS_PASSPHRASE` (the wrapper) | until rotated | Placeholder→production, routine policy, suspected leak | [`rotate-creds-passphrase.sh`](#-locksmith_creds_passphrase-the-wrapping-passphrase) |
+| Provider API keys (`ANTHROPIC_API_KEY` etc.) | provider-defined; usually long | Provider key rotation policy, suspected leak | (manual — varies per provider) |
+| Agent bearer (`lk_...`) | provider-of-deploy-defined | Agent host change-of-hands, suspected leak | `register-agents.sh` (regenerate) |
+| Operator bearer (`lkop_...` / `lk_...`) | until rotated | Operator role change, suspected leak | [`rotate-operator-token.sh`](#operator-bearer) |
+| OAuth refresh tokens | provider-defined | Provider revoked the session, suspected leak | (manual — `locksmith oauth bootstrap`) |
+| OAuth sealing key (`LOCKSMITH_OAUTH_SEALING_KEY`) | until rotated | Compromise, routine policy | [`rotate-oauth-sealing-key.sh`](#sealing-key-rotation) |
+| Internal infra tokens (`LF_SCAN_INTERNAL_TOKEN`) | until rotated | Compromise, audit recommendation | (manual) |
+
+## Tooling — automated rotation scripts (v1.4.0+)
+
+v1.4.0 ships three rotation helpers in `examples/site/scripts/`
+(also present in any site repo bootstrapped via `init-site.sh`):
+
+- **`rotate-creds-passphrase.sh`** — re-encrypt every `.creds` file
+  under `locksmith/secrets/` with a new symmetric passphrase. No
+  daemon restart. Operator updates their environment / Keychain
+  separately as the final step. Linux/systemd-creds hosts are
+  detected and rejected with a pointer to `systemd-creds(1)` for
+  re-sealing.
+- **`rotate-operator-token.sh`** — mint a fresh operator bearer,
+  patch `operators.yaml` (in-place via `yq`), re-encrypt
+  `operator_token.creds`, restart the locksmith container, run a
+  health check. Old token is invalid the moment the container
+  reloads (no grace window).
+- **`rotate-oauth-sealing-key.sh`** — heavyweight: stop daemon,
+  back up DB volume, drop `oauth_sessions`, generate new sealing
+  key, restart, then list which OAuth registrations need
+  re-bootstrapping. The bootstrap step itself stays manual (each
+  provider needs a fresh refresh token from a human-driven flow).
+
+All three are interactive by default and accept env-var overrides
+for non-interactive runs (CI, scripted operator workflows).
+
+The sections below describe each rotation type in detail. Each one
+has a "Quick path" that calls the script and a manual recipe that
+shows what the script does internally — useful for operators on
+hosts where the script doesn't apply (e.g., systemd-creds), or for
+debugging when the script reports a failure.
+
+## `LOCKSMITH_CREDS_PASSPHRASE` (the wrapping passphrase)
+
+This is the symmetric passphrase used by `decrypt-creds.sh` and
+`secrets.bootstrap.sh` to wrap/unwrap every `.creds` file under
+`locksmith/secrets/`. It does NOT directly authenticate anything
+to the daemon — it's the operator-side wrapper around all the
+other secrets.
+
+**Common case:** the placeholder/development value (`locksmith` or
+similar) needs to be replaced with a strong production value
+during initial hardening, OR the production passphrase is being
+rotated routinely.
+
+### Quick path
+
+```bash
+./scripts/rotate-creds-passphrase.sh
+# Prompts for old + new passphrase (with confirmation).
+# Re-encrypts every .creds file in place.
+# Prints follow-up instructions for updating your environment.
+```
+
+Then update your environment (the script doesn't — different
+operators have different secret stores):
+
+```bash
+# macOS Keychain
+security add-generic-password -a $USER -s LOCKSMITH_CREDS_PASSPHRASE \
+    -w '<NEW>' -U
+
+# Or simply re-export in your shell rc:
+export LOCKSMITH_CREDS_PASSPHRASE='<NEW>'
+```
+
+### Manual recipe
+
+```bash
+NEW=$(openssl rand -base64 24)
+cd locksmith/secrets
+for f in *.creds; do
+    PLAIN=$(LOCKSMITH_CREDS_PASSPHRASE="<OLD>" \
+        ../../scripts/decrypt-creds.sh "$f")
+    printf '%s' "$PLAIN" \
+        | LOCKSMITH_CREDS_PASSPHRASE="$NEW" \
+            ../../scripts/encrypt-creds.sh "${f%.creds}" "$f"
+done
+unset PLAIN
+```
+
+No daemon restart needed. The passphrase is operator-side only; the
+daemon never sees it (the entrypoint decrypts each .creds and
+passes the cleartext via env to locksmithd).
+
+### Linux / systemd-creds hosts
+
+systemd-creds doesn't use a user passphrase — it's sealed against
+the kernel keyring or TPM. Rotation in that mode is a system-config
+operation; see `systemd-creds(1)`. The `rotate-creds-passphrase.sh`
+script detects systemd-creds and exits early with a pointer.
 
 ## Provider API keys
 
@@ -132,7 +225,20 @@ locksmith agent revoke <public_id>
 Operator credential rotation requires daemon restart since the
 operator credentials file (`operators.yaml`) is read at startup.
 
-### Rust-native path (v2.0.0+)
+### Quick path (v1.4.0+)
+
+```bash
+OPERATOR_NAME=alice ./scripts/rotate-operator-token.sh
+# Mints a new bearer, patches operators.yaml in place via yq,
+# re-encrypts operator_token.creds, restarts locksmith,
+# health-checks /livez, prints verification recipe.
+```
+
+The OLD token is invalid the moment locksmith restarts — there is
+no grace window. Update any background scripts holding the old
+token simultaneously.
+
+### Rust-native path (manual)
 
 ```bash
 # 1. Mint new operator credential.
@@ -223,7 +329,23 @@ The `LOCKSMITH_OAUTH_SEALING_KEY` itself can be rotated. **Doing so
 invalidates ALL OAuth sessions** (the existing AES-GCM ciphertext
 can't be unsealed with a different key).
 
-Process:
+Plan sealing-key rotation around scheduled maintenance — agents
+calling OAuth providers will see 503 between key change and
+re-bootstrap.
+
+#### Quick path (v1.4.0+)
+
+```bash
+./scripts/rotate-oauth-sealing-key.sh
+# Confirms the heavyweight workflow with the operator.
+# Stops locksmith, backs up the DB volume to /tmp/, drops every
+# row from oauth_sessions, generates + seals a new key, restarts
+# locksmith, lists which OAuth registrations need re-bootstrap.
+# Re-bootstrap itself stays manual (each provider needs a fresh
+# refresh token from a human-driven flow).
+```
+
+#### Manual recipe
 
 ```bash
 # 1. Generate the new sealing key.
@@ -240,10 +362,6 @@ docker exec -e LOCKSMITH_OP_TOKEN="$LOCKSMITH_OP_TOKEN" layer8-locksmith \
     /usr/local/bin/locksmith oauth list --degraded
 # For each name, re-run `locksmith oauth bootstrap <name> --refresh-token ...`.
 ```
-
-Plan sealing-key rotation around scheduled maintenance — agents
-calling OAuth providers will see 503 between key change and
-re-bootstrap.
 
 ## Internal infra tokens (lf-scan, etc.)
 

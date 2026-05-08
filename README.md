@@ -4,11 +4,11 @@ Semantic networking layer (L8) for AI agents — credential proxy + egress
 firewall + scanner sidecar in one Docker Compose bundle. Agents proxy
 their outbound HTTP through layer8-proxy and never see provider API keys.
 
-**Current version: v1.3.0** ([release notes](https://github.com/SentientSwarm/layer8-proxy/releases/tag/v1.3.0))
+**Current version: v1.4.0** ([release notes](https://github.com/SentientSwarm/layer8-proxy/releases/tag/v1.4.0))
 
 ## Components
 
-- **locksmith** ([`agent-locksmith`](https://github.com/SentientSwarm/agent-locksmith) v2.3.0)
+- **locksmith** ([`agent-locksmith`](https://github.com/SentientSwarm/agent-locksmith) v2.4.0)
   — agent-facing proxy. Credential injection, per-agent bearer + ACL,
   audit, response controls, OAuth credential variant. Single namespace
   `/api/{tool}/{*path}`.
@@ -144,7 +144,8 @@ discovery but proxy calls return 503 `oauth_sealing_key_unset`.
 
 | layer8-proxy | agent-locksmith | Notes |
 |---|---|---|
-| v1.3.0 | v2.3.0 | + Phase G3: codex Responses API body fixup (`store: false`, `stream: true`, default `instructions`). **Current.** |
+| v1.4.0 | v2.4.0 | + Phase G4: codex required-header injection (`OpenAI-Beta`, `originator`). Closes the codex transparent-integration loop. + Operator key-rotation tooling (`scripts/rotate-*.sh`). **Current.** |
+| v1.3.0 | v2.3.0 | + Phase G3: codex Responses API body fixup (`store: false`, `stream: true`, default `instructions`). |
 | v1.2.0 | v2.2.0 | + Phase G2: codex `ChatGPT-Account-ID` auto-injection. |
 | v1.1.0 | v2.1.0 | + Phase G: per-agent credential overrides + OAuth session labels. |
 | v1.0.0 | v2.0.0 | Catalog substrate + OAuth + per-agent ACL + mTLS. |
