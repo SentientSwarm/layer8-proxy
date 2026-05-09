@@ -22,6 +22,25 @@ SITE_CFG="$SITE_DIR/site.cfg"
 . "$SITE_CFG"
 : "${op_environment_id:?ERROR: site.cfg must define op_environment_id (see README §1Password setup)}"
 
+# Capability probe: the `op environment` subcommand must exist. Stable-channel
+# `op` (1password-cli cask) does NOT include it as of 2.34.0; only the beta
+# cask (1password-cli@beta) does. See ADR-0006 D8 for context. We probe with
+# `--help` because it's a cheap, auth-free check.
+if ! op environment --help >/dev/null 2>&1; then
+    cat >&2 <<EOF
+ERROR: op CLI lacks the \`environment\` subcommand.
+
+  Your op CLI is likely the stable channel cask. Install the beta:
+    brew uninstall --cask 1password-cli
+    brew install --cask 1password-cli@beta
+
+  Verify: op environment --help
+
+  See ADR-0006 D8 for context.
+EOF
+    exit 1
+fi
+
 # Resolve SA token: env var > Keychain > file. Fail loud if all three miss.
 if [[ -z "${OP_SERVICE_ACCOUNT_TOKEN:-}" ]]; then
     if command -v security >/dev/null 2>&1 \

@@ -36,8 +36,10 @@ write_site_cfg() {
 }
 
 # fake_op_success <output>
-#   Installs a fake `op` that prints <output> to stdout for `op environment read`
-#   and exits 0. All other invocations exit 1 with a sentinel message.
+#   Installs a fake `op` that simulates a working beta-channel op:
+#     - `op environment read <id>` prints <output> to stdout, exits 0
+#     - `op environment --help`    exits 0 (capability probe)
+#     - anything else              exits 1 with a sentinel message
 fake_op_success() {
     local output="$1"
     cat > "$FAKE_BIN/op" <<EOF
@@ -48,6 +50,9 @@ $output
 OUT
     exit 0
 fi
+if [[ "\$1 \$2" == "environment --help" ]]; then
+    exit 0
+fi
 echo "fake-op: unexpected invocation: \$*" >&2
 exit 1
 EOF
@@ -55,6 +60,7 @@ EOF
 }
 
 # fake_op_failure <stderr-msg> [exit-code]
+#   Capability probe still succeeds; only `op environment read` fails.
 fake_op_failure() {
     local msg="$1"
     local code="${2:-1}"
@@ -63,6 +69,9 @@ fake_op_failure() {
 if [[ "\$1 \$2" == "environment read" ]]; then
     echo "$msg" >&2
     exit $code
+fi
+if [[ "\$1 \$2" == "environment --help" ]]; then
+    exit 0
 fi
 echo "fake-op: unexpected invocation: \$*" >&2
 exit 1
@@ -96,6 +105,22 @@ EOF
     chmod +x "$FAKE_BIN/security"
 }
 
+# fake_op_no_environment_subcommand
+#   Installs a fake `op` that simulates the stable channel: the binary
+#   exists, but `op environment ...` returns "unknown command". Mirrors
+#   what stable `op` 2.34.0 actually does (verified 2026-05-08).
+fake_op_no_environment_subcommand() {
+    cat > "$FAKE_BIN/op" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$1" == "environment" ]]; then
+    echo '[ERROR] unknown command "environment" for "op"' >&2
+    exit 1
+fi
+exit 0
+EOF
+    chmod +x "$FAKE_BIN/op"
+}
+
 # Tests ----------------------------------------------------------------------
 
 @test "fails loudly when site.cfg is missing" {
@@ -113,6 +138,17 @@ EOF
     SITE_DIR="$SITE_DIR" run "$SCRIPT"
     [ "$status" -ne 0 ]
     [[ "$output" == *"op_environment_id"* ]]
+}
+
+@test "fails loudly when op CLI lacks the environment subcommand (stable channel)" {
+    write_site_cfg "env_test123"
+    fake_op_no_environment_subcommand
+    fake_security_miss
+    OP_SERVICE_ACCOUNT_TOKEN=ops_test \
+        SITE_DIR="$SITE_DIR" run "$SCRIPT"
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"environment"* ]]
+    [[ "$output" == *"1password-cli@beta"* ]]
 }
 
 @test "fails loudly when no SA token is resolvable" {
