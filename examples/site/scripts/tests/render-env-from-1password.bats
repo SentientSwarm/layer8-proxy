@@ -157,6 +157,23 @@ EOF
     [[ "$output" == *"1password-cli@beta"* ]]
 }
 
+@test "rendered .env is mode 0600" {
+    write_site_cfg "env_test123"
+    fake_op_success $'KEY=value'
+    fake_security_miss
+    OP_SERVICE_ACCOUNT_TOKEN=ops_test \
+        SITE_DIR="$SITE_DIR" run "$SCRIPT"
+    [ "$status" -eq 0 ]
+    [ -f "$SITE_DIR/.env" ]
+    # `stat -f %Lp` on macOS, `stat -c %a` on Linux. Use a portable shim.
+    if stat -f %Lp "$SITE_DIR/.env" >/dev/null 2>&1; then
+        mode="$(stat -f %Lp "$SITE_DIR/.env")"
+    else
+        mode="$(stat -c %a "$SITE_DIR/.env")"
+    fi
+    [ "$mode" = "600" ]
+}
+
 @test "Linux-style host: file fallback fires when security is unavailable" {
     write_site_cfg "env_test123"
     fake_op_success $'KEY=value'

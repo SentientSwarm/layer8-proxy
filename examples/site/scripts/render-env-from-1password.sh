@@ -67,6 +67,29 @@ EOF
 fi
 export OP_SERVICE_ACCOUNT_TOKEN
 
-# Render. Atomicity (mktemp + mv) and mode-0600 hardening land in cycle 8.
-op environment read "$op_environment_id" > "$ENV_OUT"
-echo "✓ rendered $ENV_OUT from 1P Environment $op_environment_id" >&2
+# Atomic render: mktemp → fill → chmod 0600 → mv. umask 0077 ensures the temp
+# file is created restrictively even before chmod fires. Trap cleans up if
+# `op environment read` errors before the rename. Per design §4.2.1.
+umask 0077
+ENV_TMP="$(mktemp "${ENV_OUT}.XXXXXX")"
+trap 'rm -f "$ENV_TMP"' EXIT
+
+if ! op environment read "$op_environment_id" > "$ENV_TMP"; then
+    cat >&2 <<EOF
+ERROR: \`op environment read $op_environment_id\` failed.
+
+  Common causes:
+    - SA token revoked or scoped to a different Environment
+    - Environment ID is wrong (find it in 1Password app: Developer → Environments)
+    - 1Password unreachable / network issue
+    - op CLI version too old (need beta channel ≥ 2.33.0-beta.02)
+
+  To launch from existing .env without re-rendering: ./launch-*.sh --skip-render
+EOF
+    exit 1
+fi
+
+chmod 0600 "$ENV_TMP"
+mv "$ENV_TMP" "$ENV_OUT"
+trap - EXIT
+echo "✓ rendered $ENV_OUT from 1P Environment $op_environment_id ($(wc -l <"$ENV_OUT") vars)" >&2
