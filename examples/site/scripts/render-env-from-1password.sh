@@ -17,3 +17,7 @@ SITE_DIR="${SITE_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 SITE_CFG="$SITE_DIR/site.cfg"
 
 [[ -f "$SITE_CFG" ]] || { echo "ERROR: $SITE_CFG not found" >&2; exit 1; }
+
+# shellcheck source=/dev/null
+. "$SITE_CFG"
+: "${op_environment_id:?ERROR: site.cfg must define op_environment_id (see README §1Password setup)}"

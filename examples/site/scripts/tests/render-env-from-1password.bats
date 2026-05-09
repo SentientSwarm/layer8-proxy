@@ -105,3 +105,12 @@ EOF
     [ "$status" -ne 0 ]
     [[ "$output" == *"site.cfg"* ]]
 }
+
+@test "fails loudly when site.cfg lacks op_environment_id" {
+    write_site_cfg                      # empty site.cfg
+    fake_op_success ""
+    fake_security_miss
+    SITE_DIR="$SITE_DIR" run "$SCRIPT"
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"op_environment_id"* ]]
+}
