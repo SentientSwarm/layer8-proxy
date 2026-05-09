@@ -107,7 +107,9 @@ echo "→ Re-encrypting $CREDS_FILE"
 printf '%s' "$NEW_BEARER" \
     | "$SITE_DIR/scripts/encrypt-creds.sh" operator_token "$CREDS_FILE"
 
-unset NEW_OP_JSON NEW_SECRET NEW_BEARER
+unset NEW_OP_JSON NEW_SECRET
+# NEW_BEARER intentionally NOT unset here — the 1Password write-back hook
+# below needs it. It's unset at end of script.
 
 # Reload locksmith so it re-reads operators.yaml. The container's
 # entrypoint reads operators.yaml at startup; restarting picks up
@@ -125,6 +127,36 @@ else
     $RUNTIME logs --tail 30 "$LOCKSMITH_CONTAINER" >&2
     exit 1
 fi
+
+# Phase H (OPI-6) — best-effort 1Password write-back. Local rotation success
+# (above) is authoritative; this propagates the new value to 1P so other
+# consumers get it on next render. Failure here logs a warning but does NOT
+# roll back — operator can retry the 1P write separately.
+#
+# Gated on op_environment_vault_item being set in site.cfg AND the op CLI
+# being installed. See lib/op-writeback.sh + design §4.2.5.
+if [[ -f "$SITE_DIR/site.cfg" ]]; then
+    # shellcheck source=/dev/null
+    . "$SITE_DIR/site.cfg"
+fi
+if [[ -f "$SITE_DIR/scripts/lib/op-writeback.sh" ]]; then
+    # shellcheck source=/dev/null
+    . "$SITE_DIR/scripts/lib/op-writeback.sh"
+    set +e
+    op_writeback "${op_environment_vault_item:-}" "OPERATOR_TOKEN" "$NEW_BEARER"
+    OP_WB_RC=$?
+    set -e
+    case "$OP_WB_RC" in
+        0) echo "  ✓ wrote new operator token to 1P (item ${op_environment_vault_item})" ;;
+        1) : ;;  # silent skip — no vault item configured or no op CLI
+        *)
+            echo "  ⚠ rotation succeeded locally but 1P write-back failed" >&2
+            echo "     retry manually:" >&2
+            echo "     op item edit ${op_environment_vault_item} OPERATOR_TOKEN=<new-value>" >&2
+            ;;
+    esac
+fi
+unset NEW_BEARER
 
 cat <<EOF
 
