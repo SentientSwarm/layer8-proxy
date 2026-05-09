@@ -16,10 +16,12 @@ setup() {
     SITE_DIR="$BATS_TEST_TMPDIR/site"
     FAKE_BIN="$BATS_TEST_TMPDIR/bin"
     FAKE_HOME="$BATS_TEST_TMPDIR/home"
+    RECEIVED_TOKEN_FILE="$BATS_TEST_TMPDIR/received-token"
     mkdir -p "$SITE_DIR" "$FAKE_BIN" "$FAKE_HOME/.config/op"
 
     export HOME="$FAKE_HOME"
     export PATH="$FAKE_BIN:$PATH"
+    export RECEIVED_TOKEN_FILE
     unset OP_SERVICE_ACCOUNT_TOKEN
 }
 
@@ -40,10 +42,14 @@ write_site_cfg() {
 #     - `op environment read <id>` prints <output> to stdout, exits 0
 #     - `op environment --help`    exits 0 (capability probe)
 #     - anything else              exits 1 with a sentinel message
+#   On every invocation, records the inbound OP_SERVICE_ACCOUNT_TOKEN env
+#   var to $RECEIVED_TOKEN_FILE so tests can assert which precedence path
+#   resolved the token.
 fake_op_success() {
     local output="$1"
     cat > "$FAKE_BIN/op" <<EOF
 #!/usr/bin/env bash
+printf '%s' "\${OP_SERVICE_ACCOUNT_TOKEN:-}" > "$RECEIVED_TOKEN_FILE"
 if [[ "\$1 \$2" == "environment read" ]]; then
     cat <<'OUT'
 $output
@@ -149,6 +155,19 @@ EOF
     [ "$status" -ne 0 ]
     [[ "$output" == *"environment"* ]]
     [[ "$output" == *"1password-cli@beta"* ]]
+}
+
+@test "Linux-style host: file fallback fires when security is unavailable" {
+    write_site_cfg "env_test123"
+    fake_op_success $'KEY=value'
+    fake_security_miss   # security exists but errors — equivalent for the script
+                         # to "security not on PATH" (both fail the [[ -n ]] guard)
+    echo -n "ops_file_token" > "$HOME/.config/op/service-account-token"
+    chmod 0600 "$HOME/.config/op/service-account-token"
+    SITE_DIR="$SITE_DIR" run "$SCRIPT"
+    [ "$status" -eq 0 ]
+    received="$(<"$RECEIVED_TOKEN_FILE")"
+    [ "$received" = "ops_file_token" ]   # proves Keychain branch did NOT resolve
 }
 
 @test "renders .env using the file-fallback token (no env, Keychain miss)" {
