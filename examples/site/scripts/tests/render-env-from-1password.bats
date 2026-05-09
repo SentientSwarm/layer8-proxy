@@ -189,6 +189,21 @@ EOF
     [[ "$output" == *"1password-cli@beta"* ]]
 }
 
+@test "uses op_token_file from site.cfg for per-product Linux file path" {
+    # Multi-product Linux host: openclaw-site sets op_token_file to a
+    # per-product path. The script must use that path, not the default.
+    write_site_cfg "env_openclaw" "op_token_file=$HOME/.config/op/openclaw.token"
+    fake_op_success $'KEY=value'
+    fake_security_miss
+    # Token at the configured per-product path. NOT at the default path.
+    echo -n "ops_per_product_token" > "$HOME/.config/op/openclaw.token"
+    chmod 0600 "$HOME/.config/op/openclaw.token"
+    SITE_DIR="$SITE_DIR" run "$SCRIPT"
+    [ "$status" -eq 0 ]
+    received="$(<"$RECEIVED_TOKEN_FILE")"
+    [ "$received" = "ops_per_product_token" ]
+}
+
 @test "uses op_keychain_service from site.cfg for per-product Keychain isolation" {
     # Multi-product host: openclaw on this host has SA scoped to
     # openclaw-mini-1 Env; layer8-proxy on the same host has its own SA

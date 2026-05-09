@@ -23,12 +23,14 @@ ENV_OUT="$SITE_DIR/.env"
 . "$SITE_CFG"
 : "${op_environment_id:?ERROR: site.cfg must define op_environment_id (see README §1Password setup)}"
 
-# Per-site Keychain entry name. Defaults to OP_SERVICE_ACCOUNT_TOKEN, which is
-# correct for hosts that run a single product. Multi-product hosts (e.g., a
-# host running both layer8-proxy-site and an agent-site) MUST set this to a
-# unique per-product value (e.g., OP_SERVICE_ACCOUNT_TOKEN_OPENCLAW) so each
-# site's Keychain entry stays isolated from the others. See ADR-0006 D9.
+# Per-site SA-token sources (multi-product host isolation). Both default to
+# the canonical single-product values; multi-product hosts MUST override
+# both to per-product values to avoid token collision. See ADR-0006 D9.
+#
+# - op_keychain_service: macOS Keychain entry name (used when `security` is on PATH)
+# - op_token_file:       Linux file fallback path (used when Keychain branch misses)
 op_keychain_service="${op_keychain_service:-OP_SERVICE_ACCOUNT_TOKEN}"
+op_token_file="${op_token_file:-$HOME/.config/op/service-account-token}"
 
 # Capability probe: the `op environment` subcommand must exist. Stable-channel
 # `op` (1password-cli cask) does NOT include it as of 2.34.0; only the beta
@@ -56,8 +58,8 @@ if [[ -z "${OP_SERVICE_ACCOUNT_TOKEN:-}" ]]; then
             -s "$op_keychain_service" -w 2>/dev/null)" \
        && [[ -n "$OP_SERVICE_ACCOUNT_TOKEN" ]]; then
         :    # got it from Keychain
-    elif [[ -f "$HOME/.config/op/service-account-token" ]]; then
-        OP_SERVICE_ACCOUNT_TOKEN="$(< "$HOME/.config/op/service-account-token")"
+    elif [[ -f "$op_token_file" ]]; then
+        OP_SERVICE_ACCOUNT_TOKEN="$(< "$op_token_file")"
     else
         cat >&2 <<EOF
 ERROR: 1Password Service Account token not found.
@@ -65,7 +67,7 @@ ERROR: 1Password Service Account token not found.
   Tried (in order):
     1. \$OP_SERVICE_ACCOUNT_TOKEN env var (unset)
     2. macOS Keychain (security find-generic-password -s $op_keychain_service)
-    3. File at $HOME/.config/op/service-account-token
+    3. File at $op_token_file
 
   Provision: see ./scripts/provision-host-sa.sh and the README §1Password setup.
 EOF
