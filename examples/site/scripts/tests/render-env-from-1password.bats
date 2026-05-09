@@ -151,6 +151,21 @@ EOF
     [[ "$output" == *"1password-cli@beta"* ]]
 }
 
+@test "renders .env using the file-fallback token (no env, Keychain miss)" {
+    write_site_cfg "env_test123"
+    fake_op_success $'API_KEY=s3cret\nDEBUG=1'
+    fake_security_miss
+    # No env var (setup unsets it). Drop a token at the file path.
+    echo -n "ops_file_token" > "$HOME/.config/op/service-account-token"
+    chmod 0600 "$HOME/.config/op/service-account-token"
+    SITE_DIR="$SITE_DIR" run "$SCRIPT"
+    [ "$status" -eq 0 ]
+    [ -f "$SITE_DIR/.env" ]
+    rendered="$(<"$SITE_DIR/.env")"
+    [[ "$rendered" == *"API_KEY=s3cret"* ]]
+    [[ "$rendered" == *"DEBUG=1"* ]]
+}
+
 @test "renders .env from a valid env-var token" {
     write_site_cfg "env_test123"
     fake_op_success $'FOO=bar\nBAZ=qux'
