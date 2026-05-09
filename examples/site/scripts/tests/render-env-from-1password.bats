@@ -114,3 +114,16 @@ EOF
     [ "$status" -ne 0 ]
     [[ "$output" == *"op_environment_id"* ]]
 }
+
+@test "fails loudly when no SA token is resolvable" {
+    write_site_cfg "env_test123"
+    fake_op_success ""
+    fake_security_miss                  # Keychain returns nothing
+    # No file at $HOME/.config/op/service-account-token (FAKE_HOME is empty)
+    # No env var (setup unsets it)
+    SITE_DIR="$SITE_DIR" run "$SCRIPT"
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"Service Account token"* ]]
+    [[ "$output" == *"Keychain"* ]]
+    [[ "$output" == *"$HOME/.config/op/service-account-token"* ]]
+}
