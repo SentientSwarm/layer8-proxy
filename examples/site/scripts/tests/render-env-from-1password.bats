@@ -151,6 +151,19 @@ EOF
     [[ "$output" == *"1password-cli@beta"* ]]
 }
 
+@test "renders .env from a valid env-var token" {
+    write_site_cfg "env_test123"
+    fake_op_success $'FOO=bar\nBAZ=qux'
+    fake_security_miss
+    OP_SERVICE_ACCOUNT_TOKEN=ops_test \
+        SITE_DIR="$SITE_DIR" run "$SCRIPT"
+    [ "$status" -eq 0 ]
+    [ -f "$SITE_DIR/.env" ]
+    rendered="$(<"$SITE_DIR/.env")"
+    [[ "$rendered" == *"FOO=bar"* ]]
+    [[ "$rendered" == *"BAZ=qux"* ]]
+}
+
 @test "fails loudly when no SA token is resolvable" {
     write_site_cfg "env_test123"
     fake_op_success ""

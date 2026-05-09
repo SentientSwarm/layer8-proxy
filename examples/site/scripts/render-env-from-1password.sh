@@ -15,6 +15,7 @@ set -euo pipefail
 
 SITE_DIR="${SITE_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 SITE_CFG="$SITE_DIR/site.cfg"
+ENV_OUT="$SITE_DIR/.env"
 
 [[ -f "$SITE_CFG" ]] || { echo "ERROR: $SITE_CFG not found" >&2; exit 1; }
 
@@ -65,3 +66,7 @@ EOF
     fi
 fi
 export OP_SERVICE_ACCOUNT_TOKEN
+
+# Render. Atomicity (mktemp + mv) and mode-0600 hardening land in cycle 8.
+op environment read "$op_environment_id" > "$ENV_OUT"
+echo "✓ rendered $ENV_OUT from 1P Environment $op_environment_id" >&2
