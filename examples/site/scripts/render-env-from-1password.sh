@@ -1,0 +1,104 @@
+#!/usr/bin/env bash
+# render-env-from-1password.sh — materialize .env from a 1Password Environment.
+#
+# Reads op_environment_id from site.cfg, resolves the SA token from the
+# documented sources (env > Keychain > file), runs `op environment read`,
+# writes mode-0600 .env atomically. Fail-loud on any error.
+#
+# Override: --skip-render is handled by the caller (launch-*.sh), not here.
+#
+# Manual smoke recipe:
+#   SITE_DIR=/path/to/site OP_SERVICE_ACCOUNT_TOKEN=ops_xxx ./render-env-from-1password.sh
+# Automated tests: examples/site/scripts/tests/render-env-from-1password.bats
+
+set -euo pipefail
+
+SITE_DIR="${SITE_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+SITE_CFG="$SITE_DIR/site.cfg"
+ENV_OUT="$SITE_DIR/.env"
+
+[[ -f "$SITE_CFG" ]] || { echo "ERROR: $SITE_CFG not found" >&2; exit 1; }
+
+# shellcheck source=/dev/null
+. "$SITE_CFG"
+: "${op_environment_id:?ERROR: site.cfg must define op_environment_id (see README §1Password setup)}"
+
+# Per-site SA-token sources (multi-product host isolation). Both default to
+# the canonical single-product values; multi-product hosts MUST override
+# both to per-product values to avoid token collision. See ADR-0006 D9.
+#
+# - op_keychain_service: macOS Keychain entry name (used when `security` is on PATH)
+# - op_token_file:       Linux file fallback path (used when Keychain branch misses)
+op_keychain_service="${op_keychain_service:-OP_SERVICE_ACCOUNT_TOKEN}"
+op_token_file="${op_token_file:-$HOME/.config/op/service-account-token}"
+
+# Capability probe: the `op environment` subcommand must exist. Stable-channel
+# `op` (1password-cli cask) does NOT include it as of 2.34.0; only the beta
+# cask (1password-cli@beta) does. See ADR-0006 D8 for context. We probe with
+# `--help` because it's a cheap, auth-free check.
+if ! op environment --help >/dev/null 2>&1; then
+    cat >&2 <<EOF
+ERROR: op CLI lacks the \`environment\` subcommand.
+
+  Your op CLI is likely the stable channel cask. Install the beta:
+    brew uninstall --cask 1password-cli
+    brew install --cask 1password-cli@beta
+
+  Verify: op environment --help
+
+  See ADR-0006 D8 for context.
+EOF
+    exit 1
+fi
+
+# Resolve SA token: env var > Keychain > file. Fail loud if all three miss.
+if [[ -z "${OP_SERVICE_ACCOUNT_TOKEN:-}" ]]; then
+    if command -v security >/dev/null 2>&1 \
+       && OP_SERVICE_ACCOUNT_TOKEN="$(security find-generic-password \
+            -s "$op_keychain_service" -w 2>/dev/null)" \
+       && [[ -n "$OP_SERVICE_ACCOUNT_TOKEN" ]]; then
+        :    # got it from Keychain
+    elif [[ -f "$op_token_file" ]]; then
+        OP_SERVICE_ACCOUNT_TOKEN="$(< "$op_token_file")"
+    else
+        cat >&2 <<EOF
+ERROR: 1Password Service Account token not found.
+
+  Tried (in order):
+    1. \$OP_SERVICE_ACCOUNT_TOKEN env var (unset)
+    2. macOS Keychain (security find-generic-password -s $op_keychain_service)
+    3. File at $op_token_file
+
+  Provision: see ./scripts/provision-host-sa.sh and the README §1Password setup.
+EOF
+        exit 1
+    fi
+fi
+export OP_SERVICE_ACCOUNT_TOKEN
+
+# Atomic render: mktemp → fill → chmod 0600 → mv. umask 0077 ensures the temp
+# file is created restrictively even before chmod fires. Trap cleans up if
+# `op environment read` errors before the rename. Per design §4.2.1.
+umask 0077
+ENV_TMP="$(mktemp "${ENV_OUT}.XXXXXX")"
+trap 'rm -f "$ENV_TMP"' EXIT
+
+if ! op environment read "$op_environment_id" > "$ENV_TMP"; then
+    cat >&2 <<EOF
+ERROR: \`op environment read $op_environment_id\` failed.
+
+  Common causes:
+    - SA token revoked or scoped to a different Environment
+    - Environment ID is wrong (find it in 1Password app: Developer → Environments)
+    - 1Password unreachable / network issue
+    - op CLI version too old (need beta channel ≥ 2.33.0-beta.02)
+
+  To launch from existing .env without re-rendering: ./launch-*.sh --skip-render
+EOF
+    exit 1
+fi
+
+chmod 0600 "$ENV_TMP"
+mv "$ENV_TMP" "$ENV_OUT"
+trap - EXIT
+echo "✓ rendered $ENV_OUT from 1P Environment $op_environment_id ($(wc -l <"$ENV_OUT") vars)" >&2
