@@ -23,6 +23,13 @@ ENV_OUT="$SITE_DIR/.env"
 . "$SITE_CFG"
 : "${op_environment_id:?ERROR: site.cfg must define op_environment_id (see README §1Password setup)}"
 
+# Per-site Keychain entry name. Defaults to OP_SERVICE_ACCOUNT_TOKEN, which is
+# correct for hosts that run a single product. Multi-product hosts (e.g., a
+# host running both layer8-proxy-site and an agent-site) MUST set this to a
+# unique per-product value (e.g., OP_SERVICE_ACCOUNT_TOKEN_OPENCLAW) so each
+# site's Keychain entry stays isolated from the others. See ADR-0006 D9.
+op_keychain_service="${op_keychain_service:-OP_SERVICE_ACCOUNT_TOKEN}"
+
 # Capability probe: the `op environment` subcommand must exist. Stable-channel
 # `op` (1password-cli cask) does NOT include it as of 2.34.0; only the beta
 # cask (1password-cli@beta) does. See ADR-0006 D8 for context. We probe with
@@ -46,7 +53,7 @@ fi
 if [[ -z "${OP_SERVICE_ACCOUNT_TOKEN:-}" ]]; then
     if command -v security >/dev/null 2>&1 \
        && OP_SERVICE_ACCOUNT_TOKEN="$(security find-generic-password \
-            -s OP_SERVICE_ACCOUNT_TOKEN -w 2>/dev/null)" \
+            -s "$op_keychain_service" -w 2>/dev/null)" \
        && [[ -n "$OP_SERVICE_ACCOUNT_TOKEN" ]]; then
         :    # got it from Keychain
     elif [[ -f "$HOME/.config/op/service-account-token" ]]; then
@@ -57,7 +64,7 @@ ERROR: 1Password Service Account token not found.
 
   Tried (in order):
     1. \$OP_SERVICE_ACCOUNT_TOKEN env var (unset)
-    2. macOS Keychain (security find-generic-password -s OP_SERVICE_ACCOUNT_TOKEN)
+    2. macOS Keychain (security find-generic-password -s $op_keychain_service)
     3. File at $HOME/.config/op/service-account-token
 
   Provision: see ./scripts/provision-host-sa.sh and the README §1Password setup.

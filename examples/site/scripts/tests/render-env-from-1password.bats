@@ -27,11 +27,17 @@ setup() {
 
 # Helpers --------------------------------------------------------------------
 
-# write_site_cfg [op_environment_id]
-#   Writes $SITE_DIR/site.cfg. If arg given, sets op_environment_id=<arg>.
+# write_site_cfg [op_environment_id [extra_kv ...]]
+#   Writes $SITE_DIR/site.cfg with op_environment_id=<arg1> and any
+#   additional KEY=VALUE lines passed as further args. Bare call writes
+#   an empty file.
 write_site_cfg() {
     if [[ $# -ge 1 ]]; then
         printf 'op_environment_id=%s\n' "$1" > "$SITE_DIR/site.cfg"
+        shift
+        for kv in "$@"; do
+            printf '%s\n' "$kv" >> "$SITE_DIR/site.cfg"
+        done
     else
         : > "$SITE_DIR/site.cfg"
     fi
@@ -96,13 +102,39 @@ EOF
 }
 
 # fake_security_hit <token>
-#   Installs a fake `security` binary that prints <token> on
-#   `find-generic-password -s OP_SERVICE_ACCOUNT_TOKEN -w`.
+#   Installs a fake `security` binary that prints <token> for any
+#   `find-generic-password` call regardless of the -s service name.
 fake_security_hit() {
     local token="$1"
     cat > "$FAKE_BIN/security" <<EOF
 #!/usr/bin/env bash
 if [[ "\$1" == "find-generic-password" ]]; then
+    printf '%s' "$token"
+    exit 0
+fi
+exit 1
+EOF
+    chmod +x "$FAKE_BIN/security"
+}
+
+# fake_security_keyed <expected-service> <token>
+#   Installs a fake `security` binary that returns <token> ONLY when called
+#   with `-s <expected-service>`. Returns exit 1 (Keychain miss) for any
+#   other service name. Used to assert the script passes the configured
+#   service name to `security find-generic-password`.
+fake_security_keyed() {
+    local expected="$1"
+    local token="$2"
+    cat > "$FAKE_BIN/security" <<EOF
+#!/usr/bin/env bash
+service=""
+while [[ \$# -gt 0 ]]; do
+    case "\$1" in
+        -s) service="\$2"; shift 2 ;;
+        *) shift ;;
+    esac
+done
+if [[ "\$service" == "$expected" ]]; then
     printf '%s' "$token"
     exit 0
 fi
@@ -155,6 +187,20 @@ EOF
     [ "$status" -ne 0 ]
     [[ "$output" == *"environment"* ]]
     [[ "$output" == *"1password-cli@beta"* ]]
+}
+
+@test "uses op_keychain_service from site.cfg for per-product Keychain isolation" {
+    # Multi-product host: openclaw on this host has SA scoped to
+    # openclaw-mini-1 Env; layer8-proxy on the same host has its own SA
+    # scoped to layer8-proxy-mini-1 Env. Each site.cfg names its own
+    # Keychain entry to avoid token collision.
+    write_site_cfg "env_openclaw" "op_keychain_service=OP_SERVICE_ACCOUNT_TOKEN_OPENCLAW"
+    fake_op_success $'OPENCLAW_GATEWAY_TOKEN=xyz'
+    fake_security_keyed "OP_SERVICE_ACCOUNT_TOKEN_OPENCLAW" "ops_openclaw_token"
+    SITE_DIR="$SITE_DIR" run "$SCRIPT"
+    [ "$status" -eq 0 ]
+    received="$(<"$RECEIVED_TOKEN_FILE")"
+    [ "$received" = "ops_openclaw_token" ]   # NOT the default Keychain entry
 }
 
 @test "rendered .env is mode 0600" {
