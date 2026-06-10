@@ -87,6 +87,25 @@ Override fields like `--upstream` if needed; OAuth client metadata
 (client_id, scopes, URLs) typically don't need overriding. Use
 `locksmith oauth bootstrap <name>` to provide the refresh token.
 
+### `--egress direct|proxied`
+
+Every registration declares how locksmith dials its upstream:
+
+| Mode | Path | When |
+|---|---|---|
+| `proxied` (most seed entries) | locksmith → pipelock chokepoint → upstream | Internet upstreams — pipelock enforces its host allowlist + DLP |
+| `direct` | locksmith → upstream | LAN/host-local upstreams (LM Studio, agent endpoints) where the chokepoint adds nothing |
+
+**Coordination requirement for `proxied`:** pipelock's allowlist is NOT
+derived from the locksmith catalog (item D-16, planned v1.1.0) — a
+proxied registration whose hostname is missing from
+`pipelock/pipelock.yaml api_allowlist` (or the rendered
+allowlist-extras) fails at request time. Add the hostname in the same
+change that registers the tool.
+
+For exposing *agents* as upstreams (chat ingress), see
+[`expose-an-agent.md`](expose-an-agent.md).
+
 ## Scenario 2: Disable a seed default
 
 ```bash
