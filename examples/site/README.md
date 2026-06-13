@@ -13,7 +13,7 @@ The layer8-proxy bundle (`docker-compose.yml` in the parent dir) is
 deployment. A site repo holds the per-host operator state that goes
 on top of it:
 
-- **Pinned bundle version** in `site.cfg` (`layer8_version=v1.0.0`).
+- **Pinned bundle version** in `site.cfg` (`layer8_version=v1.6.0`).
 - **Sealed credentials** at rest (`locksmith/secrets/`,
   `locksmith/operators.yaml`).
 - **Per-agent ACL manifest** (`agents.yaml`) — declares which agents

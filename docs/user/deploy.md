@@ -67,7 +67,7 @@ to attribute.
 ## Image build pinning
 
 `layer8-proxy/locksmith/Dockerfile` clones `agent-locksmith` from
-`${LOCKSMITH_VERSION}` (default `v2.0.0` at v1.0.0 of this bundle).
+`${LOCKSMITH_VERSION}` (default `v2.6.0` at v1.6.0 of this bundle).
 
 Site repos pin in `.env`:
 

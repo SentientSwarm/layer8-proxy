@@ -12,9 +12,9 @@ host=
 layer8_path=../layer8-proxy
 
 # Pinned layer8-proxy version. Bumping this is the ordinary upgrade
-# path. v1.0.0 ships with agent-locksmith v2.0.0 (catalog substrate +
+# path. v1.6.0 ships with agent-locksmith v2.6.0 (catalog substrate +
 # OAuth + per-agent ACL + mTLS).
 #
 # Leave empty to skip the version check (development setups against
 # main).
-layer8_version=v1.0.0
+layer8_version=v1.6.0

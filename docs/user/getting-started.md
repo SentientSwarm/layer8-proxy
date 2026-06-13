@@ -67,7 +67,7 @@ Fill in:
 site_name=my-laptop          # any free-form identifier
 host=$(hostname)             # this host's name; appears in audit
 layer8_path=../layer8-proxy  # already correct from init-site.sh
-layer8_version=v1.0.0        # current release; pairs with locksmith v2.0.0
+layer8_version=v1.6.0        # current release; pairs with locksmith v2.6.0
 ```
 
 ## Step 4: Edit `.env`

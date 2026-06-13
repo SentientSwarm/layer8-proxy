@@ -206,7 +206,7 @@ neutral-host vs LAN deployment shapes and their trade-offs.
 
 ```
 agent-locksmith (Rust)              ──── built from upstream agent-locksmith repo
-       │                                  pinned by LOCKSMITH_VERSION (default v2.0.0)
+       │                                  pinned by LOCKSMITH_VERSION (default v2.6.0)
        │
        ▼
 locksmith Docker image              ──── built locally each deploy via Dockerfile
