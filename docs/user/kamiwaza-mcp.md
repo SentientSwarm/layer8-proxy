@@ -101,10 +101,11 @@ tracks Kamiwaza's live tool set.
 
 ### Per-tool MCP path
 
-The MCP mount point is genuinely **per-tool** and the registrar resolves it (never
-assumes): explicit `MCP_PATH` env wins; otherwise tools with `strip_path_prefix: true`
-(e.g. `kamiwaza-dde`) serve MCP at the route **root**, and the rest default to `/mcp`
-(e.g. omniparse-style). Use `KAMIWAZA_MCP_PATH_<SLUG>` to override a specific tool.
+The registrar resolves each tool's MCP sub-path: explicit `MCP_PATH` (deployment env,
+then template `env_defaults`) wins; otherwise it defaults to `/mcp`. Confirmed live
+against `kamiwaza-dde` — even with `strip_path_prefix: true` and no `MCP_PATH`, the MCP
+server mounts at `/mcp` (root 404s), so `/mcp` is the right default. Use
+`KAMIWAZA_MCP_PATH_<SLUG>` to override a specific tool that genuinely differs.
 
 ## Verify
 

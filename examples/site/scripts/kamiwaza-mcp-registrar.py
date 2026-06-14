@@ -169,25 +169,24 @@ def _mcp_path_override(slug: str) -> str | None:
 def resolve_mcp_path(
     env: dict[str, Any], template: dict[str, Any] | None, override: str | None
 ) -> str:
-    """Resolve a tool's MCP sub-path. The MCP mount point is genuinely
-    per-tool — DDE serves MCP at the route ROOT via strip_path_prefix,
-    while omniparse-style tools declare MCP_PATH=/mcp — so this must be
-    resolved, never assumed. Precedence:
+    """Resolve a tool's MCP sub-path. Precedence:
       1. operator override (KAMIWAZA_MCP_PATH_<SLUG>),
       2. explicit MCP_PATH in the deployment env,
       3. explicit MCP_PATH in the template env_defaults,
-      4. strip_path_prefix tools → root (empty),
-      5. DEFAULT_MCP_PATH (/mcp)."""
+      4. DEFAULT_MCP_PATH (/mcp).
+    NOTE: do NOT special-case strip_path_prefix → root. Confirmed live
+    against kamiwaza-dde (strip_path_prefix=true, no MCP_PATH): the MCP
+    server still mounts at /mcp (root 404s, /mcp 200s) — strip_path_prefix
+    only governs Traefik prefix stripping, not the in-container MCP mount.
+    So /mcp is the right default; use the per-tool override for genuine
+    exceptions."""
     if override is not None:
         return override
     if "MCP_PATH" in env:
         return env["MCP_PATH"]
-    tmpl = template or {}
-    tmpl_env = tmpl.get("env_defaults") or {}
+    tmpl_env = (template or {}).get("env_defaults") or {}
     if "MCP_PATH" in tmpl_env:
         return tmpl_env["MCP_PATH"]
-    if tmpl.get("strip_path_prefix"):
-        return ""
     return DEFAULT_MCP_PATH
 
 
