@@ -4,11 +4,11 @@ Semantic networking layer (L8) for AI agents — credential proxy + egress
 firewall + scanner sidecar in one Docker Compose bundle. Agents proxy
 their outbound HTTP through layer8-proxy and never see provider API keys.
 
-**Current version: v1.6.0** ([release notes](https://github.com/SentientSwarm/layer8-proxy/releases/tag/v1.6.0))
+**Current version: v1.7.0** ([release notes](https://github.com/SentientSwarm/layer8-proxy/releases/tag/v1.7.0))
 
 ## Components
 
-- **locksmith** ([`agent-locksmith`](https://github.com/SentientSwarm/agent-locksmith) v2.6.0)
+- **locksmith** ([`agent-locksmith`](https://github.com/SentientSwarm/agent-locksmith) v2.7.0)
   — agent-facing proxy. Credential injection, per-agent bearer + ACL,
   audit, response controls, OAuth credential variant. Single namespace
   `/api/{tool}/{*path}`.
@@ -144,7 +144,8 @@ discovery but proxy calls return 503 `oauth_sealing_key_unset`.
 
 | layer8-proxy | agent-locksmith | Notes |
 |---|---|---|
-| v1.6.0 | v2.6.0 | + Phase I: agent connectivity (expose an agent as `kind=model`). Locksmith change was the codex seed-upstream `/backend-api/codex` suffix fix (catalog 2.2.0); rolls up point releases v2.5.1 (personalized `/skill` catalog) + v2.5.2 (codex `max_output_tokens` strip). **Current.** |
+| v1.7.0 | v2.7.0 | + Kamiwaza MCP tools through locksmith: a registrar (`examples/site/scripts/kamiwaza-mcp-registrar.py`) discovers Kamiwaza MCP tools and registers them as `kind=tool` passthrough entries; agent-locksmith v2.7.0 adds `tls.upstream_ca_bundle` to verify the private-CA endpoints. **Current.** |
+| v1.6.0 | v2.6.0 | + Phase I: agent connectivity (expose an agent as `kind=model`). Locksmith change was the codex seed-upstream `/backend-api/codex` suffix fix (catalog 2.2.0); rolls up point releases v2.5.1 (personalized `/skill` catalog) + v2.5.2 (codex `max_output_tokens` strip). |
 | v1.5.0 | v2.5.0 | + Phase H: 1Password Service Accounts + Environments substrate as opt-in source-of-truth for site-repo `.env`. |
 | v1.4.0 | v2.4.0 | + Phase G4: codex required-header injection (`OpenAI-Beta`, `originator`). Closes the codex transparent-integration loop. + Operator key-rotation tooling (`scripts/rotate-*.sh`). |
 | v1.3.0 | v2.3.0 | + Phase G3: codex Responses API body fixup (`store: false`, `stream: true`, default `instructions`). |
