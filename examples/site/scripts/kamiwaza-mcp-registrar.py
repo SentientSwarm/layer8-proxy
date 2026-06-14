@@ -99,7 +99,13 @@ class McpTool:
     Extensions sources."""
 
     slug: str  # locksmith registration name suffix ([a-z0-9-])
-    mcp_url: str  # externally-reachable MCP endpoint URL (the upstream)
+    # The registration upstream is the tool's BASE runtime URL (no MCP
+    # sub-path). locksmith's /api/{tool}/{*path} route requires a path
+    # segment, so the agent reaches MCP at /api/<reg><mcp_path> and
+    # locksmith forwards <mcp_path> onto this base. (Validated live
+    # against kamiwaza-dde: base upstream + agent call /api/<reg>/mcp.)
+    upstream: str  # externally-reachable BASE runtime URL
+    mcp_path: str  # MCP sub-path the agent appends (e.g. /mcp)
     source: str  # "tool-shed" | "extension"
     source_id: str  # deployment id / extension name (for audit metadata)
     description: str
@@ -133,14 +139,6 @@ def slugify(name: str) -> str:
     s = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
     s = re.sub(r"-{2,}", "-", s)
     return s or "tool"
-
-
-def _external_mcp_url(base_external: str, mcp_path: str) -> str:
-    """Join a tool's external base URL with its MCP path. An empty
-    mcp_path means MCP is served at the route root (strip_path_prefix
-    tools); return the base with a trailing slash."""
-    base = base_external.rstrip("/")
-    return f"{base}/" if not mcp_path.strip("/") else f"{base}/{mcp_path.lstrip('/')}"
 
 
 _TEMPLATE_CACHE: dict[str, dict[str, Any]] | None = None
@@ -207,23 +205,23 @@ def discover_tool_shed() -> list[McpTool]:
         env = dep.get("env_vars") or {}
         template = _tool_templates().get(str(dep.get("template_id", "")))
         mcp_path = resolve_mcp_path(env, template, _mcp_path_override(slugify(name)))
-        # Prefer an https external URL if the API provides one; else build
-        # the Traefik runtime route from the deployment name.
+        # The registration upstream is the BASE runtime URL (no MCP path).
+        # Prefer the API's https external url; else build the Traefik route.
         raw_url = dep.get("url", "")
         if raw_url.startswith("https://") and "host.docker.internal" not in raw_url:
-            mcp_url = (
-                raw_url
-                if raw_url.rstrip("/").endswith(mcp_path.strip("/"))
-                else _external_mcp_url(raw_url, mcp_path)
-            )
+            base = raw_url.rstrip("/")
+            # If the API already embedded the MCP path, strip it back to base.
+            suffix = mcp_path.strip("/")
+            if suffix and base.endswith(f"/{suffix}"):
+                base = base[: -(len(suffix) + 1)]
         else:
             runtime_name = dep.get("runtime_name") or f"{name}-{dep_id.split('-')[0]}"
             base = f"{KAMIWAZA_API_URL}/runtime/tools/{runtime_name}"
-            mcp_url = _external_mcp_url(base, mcp_path)
         tools.append(
             McpTool(
                 slug=slugify(name),
-                mcp_url=mcp_url,
+                upstream=base,
+                mcp_path=mcp_path,
                 source="tool-shed",
                 source_id=str(dep_id),
                 description=dep.get("description") or f"Kamiwaza Tool Shed MCP: {name}",
@@ -256,7 +254,8 @@ def discover_extensions() -> list[McpTool]:
         tools.append(
             McpTool(
                 slug=slugify(name),
-                mcp_url=_external_mcp_url(external, mcp_path),
+                upstream=external.rstrip("/"),
+                mcp_path=mcp_path,
                 source="extension",
                 source_id=name,
                 description=ext.get("description") or f"Kamiwaza extension MCP: {name}",
@@ -312,12 +311,15 @@ def existing_kamiwaza_registrations() -> set[str]:
 
 
 def put_registration(name: str, tool: McpTool, dry_run: bool) -> None:
+    # Agent-facing MCP URL = ${layer8}/api/<name><mcp_path>; upstream is the
+    # base, locksmith forwards <mcp_path>.
+    agent_url = f"/api/{name}{tool.mcp_path}"
     args = [
         "tool",
         "put",
         name,
         "--upstream",
-        tool.mcp_url,
+        tool.upstream,
         "--auth",
         f"bearer={KAMIWAZA_PAT_ENV}",
         "--egress",
@@ -329,6 +331,8 @@ def put_registration(name: str, tool: McpTool, dry_run: bool) -> None:
         "--metadata",
         "role=mcp-tool",
         "--metadata",
+        f"mcp_path={tool.mcp_path}",
+        "--metadata",
         f"source={tool.source}",
         "--metadata",
         f"source_id={tool.source_id}",
@@ -336,13 +340,13 @@ def put_registration(name: str, tool: McpTool, dry_run: bool) -> None:
         tool.description[:200],
     ]
     if dry_run:
-        log(f"  [dry-run] put {name} -> {tool.mcp_url}")
+        log(f"  [dry-run] put {name} -> {tool.upstream} (agent MCP: {agent_url})")
         return
     proc = run_locksmith(args)
     if proc.returncode != 0:
         log(f"  FAILED put {name}: {proc.stderr.strip()}")
     else:
-        log(f"  put {name} -> {tool.mcp_url}")
+        log(f"  put {name} -> {tool.upstream} (agent MCP: {agent_url})")
 
 
 def delete_registration(name: str, dry_run: bool) -> None:

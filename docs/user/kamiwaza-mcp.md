@@ -67,6 +67,24 @@ and its outbound-trust surface never touch agent traffic.
    KAMIWAZA_MCP_PAT: ${KAMIWAZA_MCP_PAT:-}
    ```
 
+3. **Trust Kamiwaza's CA in locksmith** (HTTPS upstream behind a private CA).
+   Kamiwaza serves its MCP endpoints over HTTPS with an internal CA (e.g. "Kamiwaza
+   Application Intermediate CA"). locksmith's HTTP client uses rustls + webpki bundled
+   roots, which ignore the system store, so it will not verify that cert unless the CA
+   is named explicitly. Mount the Kamiwaza CA bundle into the locksmith container and
+   point `tls.upstream_ca_bundle` at it (agent-locksmith ≥ v2.7.0):
+
+   ```yaml
+   # locksmith config.yaml
+   tls:
+     upstream_ca_bundle: "/etc/locksmith/ca/kamiwaza-ca.pem"
+   ```
+
+   The bundle needs the cert(s) that anchor the chain — trusting the intermediate is
+   enough to verify the endpoint. Extract it with:
+   `echo | openssl s_client -connect <kamiwaza-host>:443 -servername <kamiwaza-host> -showcerts | awk '/BEGIN CERT/,/END CERT/'`
+   (keep the intermediate / root, drop the leaf). Verification is never disabled.
+
 ## Run the registrar
 
 ```bash
@@ -107,19 +125,38 @@ against `kamiwaza-dde` — even with `strip_path_prefix: true` and no `MCP_PATH`
 server mounts at `/mcp` (root 404s), so `/mcp` is the right default. Use
 `KAMIWAZA_MCP_PATH_<SLUG>` to override a specific tool that genuinely differs.
 
+## Agent-facing URL
+
+The registration's **upstream is the tool's base runtime URL** (no MCP path), because
+locksmith's `/api/{tool}/{*path}` route requires a path segment. The agent's MCP client
+points at:
+
+```
+${layer8_endpoint}/api/kamiwaza-<slug><mcp_path>     # e.g. .../api/kamiwaza-dde/mcp
+```
+
+locksmith forwards `<mcp_path>` onto the base upstream and injects the PAT. The resolved
+`<mcp_path>` is stored on the registration as `metadata.mcp_path` (default `/mcp`).
+
 ## Verify
 
 ```bash
 # The discovered tools appear as catalog registrations:
 docker exec layer8-locksmith locksmith tool list | grep kamiwaza-
 
-# An MCP-client agent allowlisted to the tool reaches it through locksmith:
-#   base = http://<proxy-host>:9200/api/kamiwaza-<slug>/
+# An MCP-client agent allowlisted to the tool reaches it through locksmith at
+#   ${layer8_endpoint}/api/kamiwaza-<slug>/mcp
 # initialize → tools/list → tools/call round-trip, PAT injected, audited.
 ```
 
 Audit rows for Kamiwaza tool calls carry `tool: kamiwaza-<slug>` and the calling
 agent's identity, like any other registration.
+
+> **Validated live (2026-06-13)** against the running `kamiwaza-dde` tool: an MCP
+> `initialize → notifications/initialized → tools/list` round-trip through a locksmith
+> built with the `tls.upstream_ca_bundle` feature succeeded — TLS verified against the
+> Kamiwaza private CA, the PAT was injected (dummy client bearer stripped), the
+> `Mcp-Session-Id` round-tripped, and all 36 DDE tools were returned.
 
 ## Notes / current limits
 
