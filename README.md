@@ -125,13 +125,17 @@ discovery but proxy calls return 503 `oauth_sealing_key_unset`.
 
 ## Stored credentials
 
-Locksmith can hold a credential itself, sealed at rest, so neither the
-agent nor the site `.env` carries it: for example a per-agent GitHub
-token set with `locksmith agent set-credential <agent> <connection>
---stored-bearer-stdin`. This needs a second, independent key:
+Locksmith 2.8.0 and later can hold a credential itself, sealed at
+rest, so neither the agent nor the site `.env` carries it. On
+Locksmith 3.0.0 and later, a per-agent token is set with `locksmith
+agent set-credential <agent> <connection> --stored-bearer-stdin`;
+2.8.0 sets stored values through the admin API only. This needs a
+second key, independent of the OAuth key. Generate it, then put the
+printed value (not the command) in `.env`:
 
 ```bash
-LOCKSMITH_CREDENTIAL_SEALING_KEY="$(openssl rand -base64 32)"
+openssl rand -base64 32
+# .env:  LOCKSMITH_CREDENTIAL_SEALING_KEY=<printed value>
 ```
 
 Without it, setting a stored credential fails with

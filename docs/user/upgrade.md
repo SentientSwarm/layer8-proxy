@@ -124,8 +124,9 @@ and removed in v0.3.
 Phase F added `LOCKSMITH_OAUTH_SEALING_KEY` (optional — only required
 if you want OAuth providers). Locksmith 2.8.0 (Phase J) added
 `LOCKSMITH_CREDENTIAL_SEALING_KEY` (optional — only required if
-locksmith should hold credentials itself, such as per-agent tokens set
-with `agent set-credential --stored-bearer-stdin`). Sites created
+locksmith should hold credentials itself). The
+`agent set-credential --stored-bearer-stdin` CLI form for per-agent
+tokens arrives in Locksmith 3.0.0. Sites created
 before this bundle wired it through need the line in their
 `docker-compose.override.yml` (see `examples/site/`) and a key in
 `.env`, then a locksmith recreate. Future releases may add others;
