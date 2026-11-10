@@ -86,7 +86,9 @@ Next steps:
        host=<this-hostname>
 
   3. Edit .env — provide provider API keys + LF_SCAN_INTERNAL_TOKEN +
-     (optional) LOCKSMITH_OAUTH_SEALING_KEY. Never commit .env.
+     (optional) the sealing keys LOCKSMITH_OAUTH_SEALING_KEY and
+     LOCKSMITH_CREDENTIAL_SEALING_KEY: paste the output of a separate
+     "openssl rand -base64 32" run for each. Never commit .env.
 
   4. Edit agents.yaml — declare your agents and their allowlists.
 

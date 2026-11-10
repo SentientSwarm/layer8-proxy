@@ -204,6 +204,7 @@ docker compose ... restart locksmith
 | `operator credentials: invalid YAML` | `operators.yaml` is malformed | Re-run bootstrap-operator (overwrites). |
 | `database open: ...` | DB path not writable | Check volume mount + filesystem permissions. |
 | `oauth sealing key: ...` | `LOCKSMITH_OAUTH_SEALING_KEY` malformed (must be base64-encoded 32 bytes) | Regenerate: `openssl rand -base64 32`. |
+| `credential store: LOCKSMITH_CREDENTIAL_SEALING_KEY unset` (info), or `credential_store_unconfigured` from `agent set-credential` | No credential sealing key reaches the container | Add `LOCKSMITH_CREDENTIAL_SEALING_KEY` to `.env` and to the locksmith `environment:` in `docker-compose.override.yml`, then recreate locksmith. |
 | `seed catalog load failed` | Bundled catalog YAML in image is corrupt | Re-pull/rebuild the locksmith image. |
 
 ```bash

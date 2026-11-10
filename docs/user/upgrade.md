@@ -122,8 +122,30 @@ and removed in v0.3.
 ### Required env vars
 
 Phase F added `LOCKSMITH_OAUTH_SEALING_KEY` (optional — only required
-if you want OAuth providers). Future releases may add others; check
-the release notes' "Required configuration" section.
+if you want OAuth providers). Locksmith 2.8.0 (Phase J) added
+`LOCKSMITH_CREDENTIAL_SEALING_KEY` (optional — only required if
+locksmith should hold credentials itself). The
+`agent set-credential --stored-bearer-stdin` CLI form for per-agent
+tokens arrives in Locksmith 3.0.0. Images older than 2.8.0
+(`LOCKSMITH_VERSION`) ignore the credential key.
+
+Sites created before this bundle wired the keys through need both
+lines in the locksmith `environment:` of their
+`docker-compose.override.yml` (copy them from
+`examples/site/docker-compose.override.yml`), values in `.env`, then a
+locksmith recreate.
+
+**Check `.env` before adding the OAuth line.** Earlier versions of the
+site README suggested `LOCKSMITH_OAUTH_SEALING_KEY="$(openssl rand
+-base64 32)"`. Compose's `--env-file` does not run commands, so that
+line holds the command text. It was harmless while the key never
+reached the container. Once wired through, Locksmith rejects the
+malformed key and does not start. Replace it with a generated value
+(run `openssl rand -base64 32` and paste the output), or leave it
+empty to keep OAuth off.
+
+Future releases may add others; check the release notes' "Required
+configuration" section.
 
 ## Downgrade
 

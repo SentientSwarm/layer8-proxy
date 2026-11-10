@@ -93,10 +93,22 @@ startup.
 ## OAuth providers
 
 To enable codex / copilot / anthropic-oauth / google-gemini-cli /
-qwen-cli, add a sealing key to your `.env`:
+qwen-cli, add a sealing key to your `.env`. Compose's `--env-file`
+does not run commands, so generate the value first and paste the
+printed output:
 
 ```bash
-LOCKSMITH_OAUTH_SEALING_KEY="$(openssl rand -base64 32)"
+openssl rand -base64 32
+# .env:  LOCKSMITH_OAUTH_SEALING_KEY=<printed value>
+```
+
+To let locksmith hold credentials itself (Locksmith 2.8.0 and later;
+per-agent tokens set with `agent set-credential --stored-bearer-stdin`
+need 3.0.0 and later), add a second, independent key the same way:
+
+```bash
+openssl rand -base64 32
+# .env:  LOCKSMITH_CREDENTIAL_SEALING_KEY=<printed value>
 ```
 
 Then bootstrap each provider's session post-deploy (operator obtains

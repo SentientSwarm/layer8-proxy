@@ -123,6 +123,27 @@ docker exec layer8-locksmith /usr/local/bin/locksmith oauth revoke codex
 Without `LOCKSMITH_OAUTH_SEALING_KEY`, OAuth registrations exist in
 discovery but proxy calls return 503 `oauth_sealing_key_unset`.
 
+## Stored credentials
+
+Locksmith 2.8.0 and later can hold a credential itself, sealed at
+rest, so neither the agent nor the site `.env` carries it. On
+Locksmith 3.0.0 and later, a per-agent token is set with `locksmith
+agent set-credential <agent> <connection> --stored-bearer-stdin`;
+2.8.0 sets stored values through the admin API only. This needs a
+second key, independent of the OAuth key. Generate it, then put the
+printed value (not the command) in `.env`:
+
+```bash
+openssl rand -base64 32
+# .env:  LOCKSMITH_CREDENTIAL_SEALING_KEY=<printed value>
+```
+
+Without it, setting a stored credential fails with
+`credential_store_unconfigured`. Keep a copy of the key wherever you
+keep the database backups: losing it makes every sealed value
+unreadable. The site template's `backup.sh` saves the database and
+`locksmith/secrets`, not `.env`, so it does not capture the key.
+
 ## Documentation
 
 - **Stack design**: [`agents-stack/docs/spec/v0.2.0.md`][spec] (formal
