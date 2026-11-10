@@ -123,6 +123,21 @@ docker exec layer8-locksmith /usr/local/bin/locksmith oauth revoke codex
 Without `LOCKSMITH_OAUTH_SEALING_KEY`, OAuth registrations exist in
 discovery but proxy calls return 503 `oauth_sealing_key_unset`.
 
+## Stored credentials
+
+Locksmith can hold a credential itself, sealed at rest, so neither the
+agent nor the site `.env` carries it: for example a per-agent GitHub
+token set with `locksmith agent set-credential <agent> <connection>
+--stored-bearer-stdin`. This needs a second, independent key:
+
+```bash
+LOCKSMITH_CREDENTIAL_SEALING_KEY="$(openssl rand -base64 32)"
+```
+
+Without it, setting a stored credential fails with
+`credential_store_unconfigured`. Back the key up with the database:
+losing it makes every sealed value unreadable.
+
 ## Documentation
 
 - **Stack design**: [`agents-stack/docs/spec/v0.2.0.md`][spec] (formal

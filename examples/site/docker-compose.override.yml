@@ -33,6 +33,13 @@ services:
       # operator can enable auth via tool YAML edit alone).
       LM_STUDIO_API_KEY: ${LM_STUDIO_API_KEY:-}
       OLLAMA_API_KEY: ${OLLAMA_API_KEY:-}
+      # Sealing keys: base64 of 32 random bytes each, independent of each
+      # other. Locksmith mounts the matching routes only when a key is set.
+      # OAuth sessions (codex, copilot, ...):
+      LOCKSMITH_OAUTH_SEALING_KEY: ${LOCKSMITH_OAUTH_SEALING_KEY:-}
+      # Sealed per-agent and per-connection credentials
+      # (`agent set-credential --stored-bearer-stdin`, stored_header):
+      LOCKSMITH_CREDENTIAL_SEALING_KEY: ${LOCKSMITH_CREDENTIAL_SEALING_KEY:-}
 
   pipelock:
     volumes:

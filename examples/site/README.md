@@ -99,6 +99,14 @@ qwen-cli, add a sealing key to your `.env`:
 LOCKSMITH_OAUTH_SEALING_KEY="$(openssl rand -base64 32)"
 ```
 
+To let locksmith hold credentials itself (per-agent tokens set with
+`agent set-credential --stored-bearer-stdin`), add a second,
+independent key:
+
+```bash
+LOCKSMITH_CREDENTIAL_SEALING_KEY="$(openssl rand -base64 32)"
+```
+
 Then bootstrap each provider's session post-deploy (operator obtains
 the refresh token via the provider's own OAuth flow):
 

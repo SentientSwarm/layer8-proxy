@@ -12,6 +12,7 @@ There are six credential surfaces. Each rotates independently:
 | Operator bearer (`lkop_...` / `lk_...`) | until rotated | Operator role change, suspected leak | [`rotate-operator-token.sh`](#operator-bearer) |
 | OAuth refresh tokens | provider-defined | Provider revoked the session, suspected leak | (manual — `locksmith oauth bootstrap`) |
 | OAuth sealing key (`LOCKSMITH_OAUTH_SEALING_KEY`) | until rotated | Compromise, routine policy | [`rotate-oauth-sealing-key.sh`](#sealing-key-rotation) |
+| Credential sealing key (`LOCKSMITH_CREDENTIAL_SEALING_KEY`) | until replaced | Compromise | (manual — no rewrap; provision fresh values under a new key, see locksmith's [sealed-state recovery](https://github.com/SentientSwarm/agent-locksmith/blob/main/docs/user/operator/sealed-state-recovery.md)) |
 | Internal infra tokens (`LF_SCAN_INTERNAL_TOKEN`) | until rotated | Compromise, audit recommendation | (manual) |
 
 ## Tooling — automated rotation scripts (v1.4.0+)
