@@ -139,8 +139,10 @@ openssl rand -base64 32
 ```
 
 Without it, setting a stored credential fails with
-`credential_store_unconfigured`. Back the key up with the database:
-losing it makes every sealed value unreadable.
+`credential_store_unconfigured`. Keep a copy of the key wherever you
+keep the database backups: losing it makes every sealed value
+unreadable. The site template's `backup.sh` saves the database and
+`locksmith/secrets`, not `.env`, so it does not capture the key.
 
 ## Documentation
 
